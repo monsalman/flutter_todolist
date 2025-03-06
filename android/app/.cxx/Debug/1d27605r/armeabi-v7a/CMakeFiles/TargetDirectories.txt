@@ -1,0 +1,2 @@
+/Users/salman/flutterProject/flutter_todolist/android/app/.cxx/Debug/1d27605r/armeabi-v7a/CMakeFiles/edit_cache.dir
+/Users/salman/flutterProject/flutter_todolist/android/app/.cxx/Debug/1d27605r/armeabi-v7a/CMakeFiles/rebuild_cache.dir
