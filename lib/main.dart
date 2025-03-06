@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+// import 'package:supabase_flutter/supabase_flutter.dart';
+// import 'package:flutter_dotenv/flutter_dotenv.dart';
+
+import 'SplashScreen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
-  await Supabase.initialize(
-    url: dotenv.env['SUPABASE_URL'] ?? '',
-    anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
-  );
+  // await dotenv.load(fileName: ".env");
+  // await Supabase.initialize(
+  //   url: dotenv.env['SUPABASE_URL'] ?? '',
+  //   anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
+  // );
   runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -24,9 +26,10 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.white ),
         useMaterial3: true,
       ),
-      // home: const SplashScreen(),
+      home: SplashScreen(),
     );
   }
 }
 
-final Color Warna = Color.fromARGB(255, 158, 203, 238);
+final Color WarnaUtama = Color(0xFF252B48);
+final Color WarnaSecondary = Color(0xFFEBF400);
