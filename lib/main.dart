@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 // import 'package:supabase_flutter/supabase_flutter.dart';
 // import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-import 'SplashScreen.dart';
+import 'A-SplashScreen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,7 +23,7 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primaryColor: Colors.white,
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.white ),
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.white),
         useMaterial3: true,
       ),
       home: SplashScreen(),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_todolist/Form/LoginPage.dart';
+import 'package:flutter_todolist/main.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -14,7 +15,7 @@ class _SplashScreenState extends State<SplashScreen> {
     super.initState();
     Future.delayed(Duration(seconds: 3), () {
       Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (context) => LoginPage()), 
+        MaterialPageRoute(builder: (context) => LoginPage()),
       );
     });
   }
@@ -22,10 +23,10 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.blue,
+      backgroundColor: WarnaUtama,
       body: Center(
         child: Text(
-          'Selamat Datang!!',
+          'Gambar',
           style: TextStyle(
             fontSize: 24,
             color: Colors.white,
