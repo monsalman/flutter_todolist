@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_todolist/Navbar/NavBar.dart';
 import 'package:flutter_todolist/main.dart';
 
-import '../Page/HomePage.dart';
 import 'RegisterPage.dart';
 
 class LoginPage extends StatefulWidget {
@@ -53,7 +53,8 @@ class _LoginPageState extends State<LoginPage> {
                             borderSide: BorderSide(color: Colors.grey),
                           ),
                           focusedBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(color: WarnaSecondary, width: 1),
+                            borderSide:
+                                BorderSide(color: WarnaSecondary, width: 1),
                           ),
                           floatingLabelStyle: TextStyle(color: WarnaSecondary),
                         ),
@@ -71,12 +72,15 @@ class _LoginPageState extends State<LoginPage> {
                             borderSide: BorderSide(color: Colors.grey),
                           ),
                           focusedBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(color: WarnaSecondary, width: 2),
+                            borderSide:
+                                BorderSide(color: WarnaSecondary, width: 2),
                           ),
                           floatingLabelStyle: TextStyle(color: WarnaSecondary),
                           suffixIcon: IconButton(
                             icon: Icon(
-                              _isPasswordVisible ? Icons.visibility : Icons.visibility_off,
+                              _isPasswordVisible
+                                  ? Icons.visibility
+                                  : Icons.visibility_off,
                               color: Colors.grey,
                             ),
                             onPressed: () {
@@ -95,7 +99,7 @@ class _LoginPageState extends State<LoginPage> {
                           onPressed: () {
                             Navigator.pushReplacement(
                               context,
-                              MaterialPageRoute(builder: (context) => HomePage()),
+                              MaterialPageRoute(builder: (context) => NavBar()),
                             );
                           },
                           style: ElevatedButton.styleFrom(
@@ -126,7 +130,8 @@ class _LoginPageState extends State<LoginPage> {
                             onPressed: () {
                               Navigator.push(
                                 context,
-                                MaterialPageRoute(builder: (context) => RegisterPage()),
+                                MaterialPageRoute(
+                                    builder: (context) => RegisterPage()),
                               );
                             },
                             child: Text(
