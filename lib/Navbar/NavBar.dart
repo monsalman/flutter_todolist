@@ -5,20 +5,33 @@ import '../Page/ProfilePage.dart';
 import '../main.dart';
 
 class NavBar extends StatefulWidget {
-  const NavBar({super.key});
+  final int initialIndex;
+  final bool expandCategories;
+
+  const NavBar({
+    super.key,
+    this.initialIndex = 0, // Default ke halaman pertama
+    this.expandCategories = false, // Default false
+  });
 
   @override
   State<NavBar> createState() => _NavBarState();
 }
 
 class _NavBarState extends State<NavBar> {
-  int _selectedIndex = 0;
+  late int _selectedIndex;
 
-  static const List<Widget> _pages = [
-    KalenderPage(),
-    TaskPage(),
-    ProfilePage(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _selectedIndex = widget.initialIndex;
+  }
+
+  static List<Widget> _pages(bool expandCategories) => [
+        const KalenderPage(),
+        const TaskPage(),
+        ProfilePage(initiallyExpanded: expandCategories),
+      ];
 
   void _onItemTapped(int index) {
     setState(() {
@@ -29,7 +42,7 @@ class _NavBarState extends State<NavBar> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _pages[_selectedIndex],
+      body: _pages(widget.expandCategories)[_selectedIndex],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Color(0xFF4E4062),

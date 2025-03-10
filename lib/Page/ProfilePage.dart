@@ -4,7 +4,12 @@ import '../main.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfilePage extends StatefulWidget {
-  const ProfilePage({super.key});
+  final bool initiallyExpanded;
+
+  const ProfilePage({
+    super.key,
+    this.initiallyExpanded = false,
+  });
 
   @override
   State<ProfilePage> createState() => _ProfilePageState();
@@ -261,6 +266,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: ExpansionTile(
+                            initiallyExpanded: widget.initiallyExpanded,
                             title: Text(
                               'Kategori',
                               style: TextStyle(
