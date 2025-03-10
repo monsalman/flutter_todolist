@@ -13,6 +13,7 @@ class _KalenderPageState extends State<KalenderPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         title: Text(
           'Kalender',
           style: TextStyle(color: Colors.white),

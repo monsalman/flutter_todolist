@@ -42,10 +42,6 @@ class _NavBarState extends State<NavBar> {
           ],
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
-          ),
           child: BottomNavigationBar(
             items: <BottomNavigationBarItem>[
               BottomNavigationBarItem(
@@ -62,7 +58,7 @@ class _NavBarState extends State<NavBar> {
               ),
             ],
             currentIndex: _selectedIndex,
-            backgroundColor: Color(0xFF4E4062),
+            backgroundColor: WarnaUtama2,
             selectedItemColor: WarnaSecondary,
             unselectedItemColor: Colors.white,
             elevation: 0,
