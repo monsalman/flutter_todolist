@@ -119,13 +119,22 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     try {
+      final oldCategoryName = categories[index];
       final newCategories = [...categories];
       newCategories[index] = newName.trim();
 
+      // Update kategori di table users
       await Supabase.instance.client
           .from('users')
           .update({'categories': newCategories}).eq(
               'id', Supabase.instance.client.auth.currentUser!.id);
+
+      // Update kategori di semua task yang menggunakan kategori ini
+      await Supabase.instance.client
+          .from('tasks')
+          .update({'category': newName.trim()})
+          .eq('category', oldCategoryName)
+          .eq('user_id', Supabase.instance.client.auth.currentUser!.id);
 
       setState(() {
         categories = newCategories;
@@ -153,13 +162,22 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Future<void> _deleteCategory(int index) async {
     try {
+      final categoryToDelete = categories[index];
       final newCategories = [...categories];
       newCategories.removeAt(index);
 
+      // Update kategori di table users
       await Supabase.instance.client
           .from('users')
           .update({'categories': newCategories}).eq(
               'id', Supabase.instance.client.auth.currentUser!.id);
+
+      // Set kategori menjadi null untuk semua task yang menggunakan kategori ini
+      await Supabase.instance.client
+          .from('tasks')
+          .update({'category': null})
+          .eq('category', categoryToDelete)
+          .eq('user_id', Supabase.instance.client.auth.currentUser!.id);
 
       setState(() {
         categories = newCategories;
