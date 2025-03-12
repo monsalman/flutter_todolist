@@ -37,3 +37,5 @@ class MyApp extends StatelessWidget {
 final Color WarnaUtama = Color(0xFF252B48);
 final Color WarnaUtama2 = Color(0xFF4E4062);
 final Color WarnaSecondary = Color(0xFFEBF400);
+
+// 1E3E62 0B192C

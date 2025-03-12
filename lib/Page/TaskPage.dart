@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../Navbar/NavBar.dart';
 import '../main.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'TaskDetail.dart';
 
 class TaskPage extends StatefulWidget {
   const TaskPage({super.key});
@@ -157,6 +158,7 @@ class _TaskPageState extends State<TaskPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         backgroundColor: WarnaUtama,
         elevation: 0,
         flexibleSpace: Container(
@@ -219,8 +221,20 @@ class _TaskPageState extends State<TaskPage> {
               ),
               color: WarnaUtama2,
               child: ListTile(
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                contentPadding: EdgeInsets.symmetric(horizontal: 10),
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => TaskDetail(
+                        task: task,
+                        onTaskUpdated: () {
+                          _loadTasks();
+                        },
+                      ),
+                    ),
+                  );
+                },
                 leading: Transform.scale(
                   scale: 1.2,
                   child: Checkbox(
@@ -259,7 +273,7 @@ class _TaskPageState extends State<TaskPage> {
                     fontSize: 16,
                     decoration: isCompleted ? TextDecoration.lineThrough : null,
                     decorationColor: WarnaSecondary,
-                    decorationThickness: 2,
+                    decorationThickness: 1.5,
                   ),
                 ),
               ),
