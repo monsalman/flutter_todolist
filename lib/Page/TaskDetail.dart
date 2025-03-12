@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../main.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class TaskDetail extends StatefulWidget {
   final Map<String, dynamic> task;
@@ -17,13 +18,22 @@ class TaskDetail extends StatefulWidget {
 
 class _TaskDetailState extends State<TaskDetail> {
   late TextEditingController _titleController;
-  List<String> subtasks = [];
+  List<Map<String, dynamic>> subtasks = [];
   bool _showInputField = false;
 
   @override
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.task['title']);
+    if (widget.task['subtasks'] != null) {
+      subtasks = (widget.task['subtasks'] as List).map((item) {
+        if (item is Map) {
+          return Map<String, dynamic>.from(item);
+        } else {
+          return {'title': item.toString(), 'isCompleted': false};
+        }
+      }).toList();
+    }
   }
 
   @override
@@ -32,11 +42,77 @@ class _TaskDetailState extends State<TaskDetail> {
     super.dispose();
   }
 
-  void _addSubtask(String subtask) {
-    setState(() {
-      subtasks.add(subtask);
-      _showInputField = false;
-    });
+  Future<void> _addSubtask(String subtask) async {
+    try {
+      setState(() {
+        subtasks.add({'title': subtask, 'isCompleted': false});
+        _showInputField = false;
+      });
+
+      await Supabase.instance.client.from('tasks').update({
+        'subtasks': subtasks,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', widget.task['id']);
+
+      widget.onTaskUpdated();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error saving subtask: ${error.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteSubtask(int index) async {
+    try {
+      setState(() {
+        subtasks.removeAt(index);
+      });
+
+      await Supabase.instance.client.from('tasks').update({
+        'subtasks': subtasks,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', widget.task['id']);
+
+      widget.onTaskUpdated();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting subtask: ${error.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _toggleSubtask(int index) async {
+    try {
+      setState(() {
+        subtasks[index]['isCompleted'] = !subtasks[index]['isCompleted'];
+      });
+
+      await Supabase.instance.client.from('tasks').update({
+        'subtasks': subtasks,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', widget.task['id']);
+
+      widget.onTaskUpdated();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating subtask: ${error.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _toggleInputField() {
@@ -45,8 +121,20 @@ class _TaskDetailState extends State<TaskDetail> {
     });
   }
 
+  // Tambahkan method untuk mengurutkan subtasks
+  List<Map<String, dynamic>> _getSortedSubtasks() {
+    return [...subtasks]..sort((a, b) {
+        if (a['isCompleted'] && !b['isCompleted']) return 1;
+        if (!a['isCompleted'] && b['isCompleted']) return -1;
+        return 0;
+      });
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Dapatkan subtasks yang sudah diurutkan
+    final sortedSubtasks = _getSortedSubtasks();
+
     return Scaffold(
       backgroundColor: WarnaUtama,
       appBar: AppBar(
@@ -70,7 +158,7 @@ class _TaskDetailState extends State<TaskDetail> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: 12),
+            SizedBox(height: 15),
             if (subtasks.isNotEmpty)
               Text(
                 'Subtasks:',
@@ -79,14 +167,64 @@ class _TaskDetailState extends State<TaskDetail> {
                   fontSize: 14,
                 ),
               ),
-            for (var subtask in subtasks)
+            for (var i = 0; i < sortedSubtasks.length; i++)
               ListTile(
-                title: Text(
-                  subtask,
-                  style: TextStyle(color: Colors.white),
+                contentPadding: EdgeInsets.only(
+                  left: 5,
                 ),
-                leading:
-                    Icon(Icons.radio_button_unchecked, color: Colors.white70),
+                minLeadingWidth: 0,
+                horizontalTitleGap: 0,
+                title: Text(
+                  sortedSubtasks[i]['title'],
+                  style: TextStyle(
+                    color: Colors.white,
+                    decoration: sortedSubtasks[i]['isCompleted']
+                        ? TextDecoration.lineThrough
+                        : null,
+                    decorationColor: WarnaSecondary,
+                    decorationThickness: 1.5,
+                  ),
+                ),
+                leading: Transform.scale(
+                  scale: 1.2,
+                  child: Checkbox(
+                    value: sortedSubtasks[i]['isCompleted'],
+                    onChanged: (bool? value) {
+                      if (value != null) {
+                        // Cari index asli di list subtasks
+                        final originalIndex = subtasks.indexWhere((task) =>
+                            task['title'] == sortedSubtasks[i]['title']);
+                        _toggleSubtask(originalIndex);
+                      }
+                    },
+                    activeColor: WarnaSecondary,
+                    checkColor: WarnaUtama,
+                    side: BorderSide(
+                      color: WarnaSecondary,
+                      width: 2,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    fillColor: MaterialStateProperty.resolveWith<Color>(
+                      (Set<MaterialState> states) {
+                        if (states.contains(MaterialState.selected)) {
+                          return WarnaSecondary;
+                        }
+                        return Colors.transparent;
+                      },
+                    ),
+                  ),
+                ),
+                trailing: IconButton(
+                  icon: Icon(Icons.delete, color: Colors.white70),
+                  onPressed: () {
+                    // Cari index asli di list subtasks
+                    final originalIndex = subtasks.indexWhere(
+                        (task) => task['title'] == sortedSubtasks[i]['title']);
+                    _deleteSubtask(originalIndex);
+                  },
+                ),
               ),
             _showInputField
                 ? TextField(
@@ -110,11 +248,22 @@ class _TaskDetailState extends State<TaskDetail> {
                     style: TextStyle(color: Colors.white),
                     cursorColor: WarnaSecondary,
                   )
-                : TextButton(
-                    onPressed: _toggleInputField,
-                    child: Text(
-                      'Add Subtask',
-                      style: TextStyle(color: WarnaSecondary),
+                : Padding(
+                    padding: EdgeInsets.only(left: 5, top: 0),
+                    child: TextButton.icon(
+                      onPressed: _toggleInputField,
+                      icon: Icon(
+                        Icons.add,
+                        color: WarnaSecondary,
+                        size: 25,
+                      ),
+                      label: Text(
+                        'Add Subtask',
+                        style: TextStyle(
+                          color: WarnaSecondary,
+                          fontSize: 18,
+                        ),
+                      ),
                     ),
                   ),
             SizedBox(height: 20),
