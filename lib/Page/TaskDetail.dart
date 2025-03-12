@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../Navbar/NavBar.dart';
 import '../main.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -20,6 +21,9 @@ class _TaskDetailState extends State<TaskDetail> {
   late TextEditingController _titleController;
   List<Map<String, dynamic>> subtasks = [];
   bool _showInputField = false;
+  List<String> categories = [];
+  final GlobalKey _categoryKey = GlobalKey();
+  bool _isMenuOpen = false;
 
   @override
   void initState() {
@@ -34,12 +38,75 @@ class _TaskDetailState extends State<TaskDetail> {
         }
       }).toList();
     }
+    _loadCategories();
   }
 
   @override
   void dispose() {
     _titleController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final User? user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        final data = await Supabase.instance.client
+            .from('users')
+            .select()
+            .eq('id', user.id)
+            .single();
+
+        if (mounted) {
+          setState(() {
+            categories = List<String>.from(data['categories'] ?? []);
+          });
+        }
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading categories: ${error.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _updateCategory(String? newCategory) async {
+    if (newCategory == widget.task['category']) {
+      return;
+    }
+
+    try {
+      await Supabase.instance.client.from('tasks').update({
+        'category': newCategory,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', widget.task['id']);
+
+      setState(() {
+        widget.task['category'] = newCategory;
+      });
+      widget.onTaskUpdated();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Category updated successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating category: ${error.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _addSubtask(String subtask) async {
@@ -227,26 +294,39 @@ class _TaskDetailState extends State<TaskDetail> {
                 ),
               ),
             _showInputField
-                ? TextField(
-                    autofocus: true,
-                    onSubmitted: (value) {
-                      if (value.isNotEmpty) {
-                        _addSubtask(value);
-                      }
-                    },
-                    decoration: InputDecoration(
-                      hintText: 'Input the sub-task',
-                      hintStyle: TextStyle(color: Colors.white70),
-                      enabledBorder: UnderlineInputBorder(
-                        borderSide: BorderSide(color: Colors.white70),
-                      ),
-                      focusedBorder: UnderlineInputBorder(
-                        borderSide:
-                            BorderSide(color: WarnaSecondary, width: 1.5),
+                ? Center(
+                    child: Container(
+                      width: MediaQuery.of(context).size.width * 0.8,
+                      child: TextField(
+                        autofocus: true,
+                        onSubmitted: (value) {
+                          if (value.isNotEmpty) {
+                            _addSubtask(value);
+                          }
+                        },
+                        decoration: InputDecoration(
+                          hintText: 'Input the sub-task',
+                          hintStyle: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 18,
+                            height: 1,
+                          ),
+                          contentPadding: EdgeInsets.zero,
+                          enabledBorder: UnderlineInputBorder(
+                            borderSide: BorderSide(color: Colors.white70),
+                          ),
+                          focusedBorder: UnderlineInputBorder(
+                            borderSide:
+                                BorderSide(color: WarnaSecondary, width: 1.5),
+                          ),
+                        ),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                        cursorColor: WarnaSecondary,
                       ),
                     ),
-                    style: TextStyle(color: Colors.white),
-                    cursorColor: WarnaSecondary,
                   )
                 : Padding(
                     padding: EdgeInsets.only(left: 5, top: 0),
@@ -275,17 +355,107 @@ class _TaskDetailState extends State<TaskDetail> {
               ),
             ),
             SizedBox(height: 4),
-            Container(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: WarnaUtama2,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                widget.task['category'] ?? 'No Category',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _isMenuOpen = true;
+                });
+
+                final RenderBox? button = _categoryKey.currentContext
+                    ?.findRenderObject() as RenderBox?;
+                if (button != null) {
+                  final position = button.localToGlobal(Offset.zero);
+                  final size = button.size;
+
+                  showMenu(
+                    context: context,
+                    position: RelativeRect.fromLTRB(
+                      position.dx,
+                      position.dy + 40,
+                      position.dx + size.width,
+                      position.dy,
+                    ),
+                    color: WarnaUtama2,
+                    items: [
+                      ...categories.map(
+                        (category) => PopupMenuItem(
+                          value: category,
+                          child: Text(
+                            category,
+                            style: TextStyle(color: Colors.white70),
+                          ),
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'add_category',
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.add,
+                              color: WarnaSecondary,
+                              size: 20,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Add Category',
+                              style: TextStyle(
+                                color: WarnaSecondary,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ).then((selectedValue) {
+                    setState(() {
+                      _isMenuOpen = false;
+                    });
+
+                    if (selectedValue == 'add_category') {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => NavBar(
+                            initialIndex: 2,
+                            expandCategories: true,
+                          ),
+                        ),
+                      );
+                    } else if (selectedValue != null) {
+                      _updateCategory(selectedValue);
+                    }
+                  });
+                }
+              },
+              child: Container(
+                key: _categoryKey,
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: WarnaUtama2,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      widget.task['category'] ?? 'No Category',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 14,
+                      ),
+                    ),
+                    SizedBox(width: 5),
+                    AnimatedRotation(
+                      turns: _isMenuOpen ? 0.5 : 0,
+                      duration: Duration(milliseconds: 200),
+                      child: Icon(
+                        Icons.keyboard_arrow_down,
+                        color: Colors.white70,
+                        size: 20,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
