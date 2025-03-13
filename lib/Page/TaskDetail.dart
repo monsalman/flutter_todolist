@@ -915,6 +915,142 @@ class _TaskDetailState extends State<TaskDetail> {
     }
   }
 
+  Future<void> _editNotes(BuildContext context) async {
+    final TextEditingController notesController =
+        TextEditingController(text: widget.task['notes']);
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.symmetric(horizontal: 20),
+          child: Container(
+            decoration: BoxDecoration(
+              color: WarnaUtama,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'Notes',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+
+                // Notes TextField
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: TextField(
+                    controller: notesController,
+                    maxLines: 5,
+                    autofocus: true,
+                    cursorColor: WarnaSecondary,
+                    textCapitalization: TextCapitalization.sentences,
+                    style: TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Add your notes here...',
+                      hintStyle: TextStyle(color: Colors.white70),
+                      enabledBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white70),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderSide: BorderSide(color: WarnaSecondary),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      contentPadding: EdgeInsets.all(16),
+                    ),
+                  ),
+                ),
+
+                // Action buttons
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: WarnaSecondary,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      SizedBox(width: 16),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: WarnaSecondary,
+                          foregroundColor: Colors.black,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        onPressed: () =>
+                            Navigator.pop(context, notesController.text),
+                        child: Text(
+                          'Save',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (result != null) {
+      try {
+        await Supabase.instance.client.from('tasks').update({
+          'notes': result,
+          'updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', widget.task['id']);
+
+        setState(() {
+          widget.task['notes'] = result;
+        });
+
+        widget.onTaskUpdated();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Notes updated successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error updating notes: ${error.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Dapatkan subtasks yang sudah diurutkan
@@ -1154,18 +1290,36 @@ class _TaskDetailState extends State<TaskDetail> {
                 margin: EdgeInsets.only(bottom: 16),
                 child: Column(
                   children: [
-                    // Notes Row
                     ListTile(
                       leading: Icon(
                         Icons.note,
                         color: Colors.white,
                       ),
-                      title: Text(
-                        'Notes',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                        ),
+                      title: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Notes',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                          if (widget.task['notes'] != null &&
+                              widget.task['notes'].isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(top: 4),
+                              child: Text(
+                                widget.task['notes'],
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                        ],
                       ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -1173,7 +1327,7 @@ class _TaskDetailState extends State<TaskDetail> {
                           Text(
                             widget.task['notes'] != null &&
                                     widget.task['notes'].isNotEmpty
-                                ? 'View'
+                                ? 'Edit'
                                 : 'Add',
                             style: TextStyle(
                               color: Colors.white,
@@ -1186,9 +1340,7 @@ class _TaskDetailState extends State<TaskDetail> {
                           ),
                         ],
                       ),
-                      onTap: () {
-                        // TODO: Implement notes editor
-                      },
+                      onTap: () => _editNotes(context),
                     ),
 
                     Divider(height: 1, color: WarnaUtama.withOpacity(0.3)),
