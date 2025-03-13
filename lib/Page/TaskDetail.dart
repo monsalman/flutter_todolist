@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../Navbar/NavBar.dart';
 import '../main.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/intl.dart';
 
 class TaskDetail extends StatefulWidget {
   final Map<String, dynamic> task;
@@ -197,6 +198,729 @@ class _TaskDetailState extends State<TaskDetail> {
       });
   }
 
+  // Metode _selectDate yang diperbarui untuk menyimpan tanggal tanpa jam
+  Future<void> _selectDate(BuildContext context) async {
+    DateTime? selectedDate = widget.task['due_date'] != null
+        ? DateTime.parse(widget.task['due_date'])
+        : DateTime.now();
+
+    final result = await showDialog<DateTime>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.symmetric(horizontal: 20),
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: Color(0xFF5D4777), // Purple color from your screenshot
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header with "Select date" text
+                    Padding(
+                      padding:
+                          const EdgeInsets.only(top: 20, left: 20, right: 20),
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Select date',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // Selected date display with edit button
+                    Container(
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            DateFormat('E, MMM d').format(selectedDate!),
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 36,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              Icons.edit,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                            onPressed: () {
+                              // Allow manual date entry
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // Custom Calendar
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Color(0xFF5D4777),
+                        borderRadius: BorderRadius.only(
+                          bottomLeft: Radius.circular(16),
+                          bottomRight: Radius.circular(16),
+                        ),
+                      ),
+                      child: Column(
+                        children: [
+                          // Month and Year header with navigation
+                          Container(
+                            padding: EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Color(0xFFEAE4F2).withOpacity(0.2),
+                              borderRadius: BorderRadius.zero,
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                IconButton(
+                                  icon: Icon(Icons.chevron_left,
+                                      color: Colors.white),
+                                  onPressed: () {
+                                    setState(() {
+                                      selectedDate = DateTime(
+                                        selectedDate!.year,
+                                        selectedDate!.month - 1,
+                                        selectedDate!.day,
+                                      );
+                                    });
+                                  },
+                                ),
+                                Text(
+                                  DateFormat('MMMM yyyy').format(selectedDate!),
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: Icon(Icons.chevron_right,
+                                      color: Colors.white),
+                                  onPressed: () {
+                                    setState(() {
+                                      selectedDate = DateTime(
+                                        selectedDate!.year,
+                                        selectedDate!.month + 1,
+                                        selectedDate!.day,
+                                      );
+                                    });
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+
+                          // Day of week headers
+                          Padding(
+                            padding: const EdgeInsets.only(
+                                top: 16, left: 16, right: 16),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                for (final day in [
+                                  'SUN',
+                                  'MON',
+                                  'TUE',
+                                  'WED',
+                                  'THU',
+                                  'FRI',
+                                  'SAT'
+                                ])
+                                  Expanded(
+                                    child: Center(
+                                      child: Text(
+                                        day,
+                                        style: TextStyle(
+                                          color: day == 'FRI'
+                                              ? Colors.white
+                                              : Colors.white.withOpacity(0.8),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+
+                          // Calendar grid
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Column(
+                              children:
+                                  _buildCalendarGrid(selectedDate!, (date) {
+                                setState(() {
+                                  selectedDate = date;
+                                });
+                              }),
+                            ),
+                          ),
+
+                          // Action buttons
+                          Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context),
+                                  child: Text(
+                                    'Cancel',
+                                    style: TextStyle(
+                                      color: WarnaSecondary,
+                                      fontSize: 16,
+                                    ),
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(context, selectedDate),
+                                  child: Text(
+                                    'OK',
+                                    style: TextStyle(
+                                      color: WarnaSecondary,
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+
+    if (result != null) {
+      try {
+        // Format tanggal sebagai YYYY-MM-DD (tanpa jam)
+        final dateString =
+            "${result.year}-${result.month.toString().padLeft(2, '0')}-${result.day.toString().padLeft(2, '0')}";
+
+        await Supabase.instance.client.from('tasks').update({
+          'due_date': dateString,
+          'updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', widget.task['id']);
+
+        setState(() {
+          widget.task['due_date'] = dateString;
+        });
+
+        widget.onTaskUpdated();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Due date updated successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error updating due date: ${error.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  // Helper method to build calendar grid
+  List<Widget> _buildCalendarGrid(
+      DateTime currentMonth, Function(DateTime) onSelectDate) {
+    // Get the first day of the month
+    final firstDayOfMonth = DateTime(currentMonth.year, currentMonth.month, 1);
+
+    // Get the day of week for the first day (0 = Sunday, 6 = Saturday)
+    final firstWeekday = firstDayOfMonth.weekday % 7;
+
+    // Get the number of days in the month
+    final daysInMonth =
+        DateTime(currentMonth.year, currentMonth.month + 1, 0).day;
+
+    // Get the number of days in the previous month
+    final daysInPrevMonth =
+        DateTime(currentMonth.year, currentMonth.month, 0).day;
+
+    // Calculate the number of rows needed (always 6 for consistency)
+    const numRows = 6;
+
+    List<Widget> rows = [];
+
+    int day = 1 - firstWeekday;
+
+    // Build each row
+    for (int row = 0; row < numRows; row++) {
+      List<Widget> rowChildren = [];
+
+      // Build each day cell in the row
+      for (int col = 0; col < 7; col++) {
+        if (day <= 0) {
+          // Previous month
+          final prevMonthDay = daysInPrevMonth + day;
+          rowChildren.add(
+            _buildDayCell(
+              day: prevMonthDay,
+              isCurrentMonth: false,
+              isSelected: false,
+              onTap: () {},
+            ),
+          );
+        } else if (day > daysInMonth) {
+          // Next month
+          final nextMonthDay = day - daysInMonth;
+          rowChildren.add(
+            _buildDayCell(
+              day: nextMonthDay,
+              isCurrentMonth: false,
+              isSelected: false,
+              onTap: () {},
+            ),
+          );
+        } else {
+          // Current month
+          final date = DateTime(currentMonth.year, currentMonth.month, day);
+          final isSelected = date.year == currentMonth.year &&
+              date.month == currentMonth.month &&
+              date.day == currentMonth.day;
+
+          rowChildren.add(
+            _buildDayCell(
+              day: day,
+              isCurrentMonth: true,
+              isSelected: isSelected,
+              onTap: () => onSelectDate(date),
+            ),
+          );
+        }
+        day++;
+      }
+
+      rows.add(
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: rowChildren,
+        ),
+      );
+    }
+
+    return rows;
+  }
+
+  // Helper method to build a day cell
+  Widget _buildDayCell({
+    required int day,
+    required bool isCurrentMonth,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: AspectRatio(
+        aspectRatio: 1,
+        child: GestureDetector(
+          onTap: isCurrentMonth ? onTap : null,
+          child: Container(
+            margin: EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: isSelected ? WarnaSecondary : Colors.transparent,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                day.toString(),
+                style: TextStyle(
+                  color: isCurrentMonth
+                      ? isSelected
+                          ? Colors.black
+                          : Colors.white
+                      : Colors.white.withOpacity(0.3),
+                  fontSize: 16,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Ganti metode _selectTime untuk menyimpan waktu dalam format yang benar
+  Future<void> _selectTime(BuildContext context) async {
+    // Parse waktu dari database jika ada
+    String? currentTimeString = widget.task['time'];
+    TimeOfDay? selectedTime;
+
+    if (currentTimeString != null) {
+      try {
+        // Coba parse dari format ISO 8601 (format lama)
+        if (currentTimeString.contains('T') ||
+            currentTimeString.contains(' ')) {
+          final dateTime = DateTime.parse(currentTimeString);
+          selectedTime =
+              TimeOfDay(hour: dateTime.hour, minute: dateTime.minute);
+        } else {
+          // Parse dari format HH:MM:SS (format time PostgreSQL)
+          final parts = currentTimeString.split(':');
+          selectedTime = TimeOfDay(
+              hour: int.parse(parts[0]),
+              minute: parts.length > 1 ? int.parse(parts[1]) : 0);
+        }
+      } catch (e) {
+        // Jika parsing gagal, gunakan waktu default
+        selectedTime = TimeOfDay.now();
+      }
+    } else {
+      // Default ke waktu sekarang jika tidak ada waktu tersimpan
+      selectedTime = TimeOfDay.now();
+    }
+
+    int selectedHour = selectedTime.hour;
+    int selectedMinute = selectedTime.minute;
+
+    final result = await showDialog<TimeOfDay?>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.symmetric(horizontal: 20),
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: Color(0xFF5D4777),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        'Select time',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+
+                    // Time spinner
+                    Container(
+                      height: 200,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Hour spinner
+                          _buildTimeSpinner(
+                            value: selectedHour,
+                            minValue: 0,
+                            maxValue: 23,
+                            onChanged: (value) {
+                              setState(() {
+                                selectedHour = value;
+                              });
+                            },
+                            format: (value) => value.toString().padLeft(2, '0'),
+                          ),
+
+                          // Separator
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            child: Text(
+                              ':',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 40,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+
+                          // Minute spinner
+                          _buildTimeSpinner(
+                            value: selectedMinute,
+                            minValue: 0,
+                            maxValue: 59,
+                            onChanged: (value) {
+                              setState(() {
+                                selectedMinute = value;
+                              });
+                            },
+                            format: (value) => value.toString().padLeft(2, '0'),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    SizedBox(height: 16),
+
+                    // Action buttons
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context, null);
+                            },
+                            child: Text(
+                              'No Time',
+                              style: TextStyle(
+                                color: WarnaSecondary,
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context),
+                                child: Text(
+                                  'Cancel',
+                                  style: TextStyle(
+                                    color: WarnaSecondary,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              SizedBox(width: 16),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: WarnaSecondary,
+                                  foregroundColor: Colors.black,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 8),
+                                ),
+                                onPressed: () => Navigator.pop(
+                                    context,
+                                    TimeOfDay(
+                                        hour: selectedHour,
+                                        minute: selectedMinute)),
+                                child: Text(
+                                  'OK',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+
+    // Handle hasil dialog
+    if (result != null) {
+      try {
+        // Format waktu sebagai string HH:MM:SS untuk tipe time PostgreSQL
+        final timeString =
+            '${result.hour.toString().padLeft(2, '0')}:${result.minute.toString().padLeft(2, '0')}:00';
+
+        await Supabase.instance.client.from('tasks').update({
+          'time': timeString,
+          'updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', widget.task['id']);
+
+        setState(() {
+          widget.task['time'] = timeString;
+        });
+
+        widget.onTaskUpdated();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Time updated successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error updating time: ${error.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } else {
+      // User selected "No Time"
+      try {
+        await Supabase.instance.client.from('tasks').update({
+          'time': null,
+          'updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', widget.task['id']);
+
+        setState(() {
+          widget.task['time'] = null;
+        });
+
+        widget.onTaskUpdated();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Time removed successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error updating time: ${error.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    }
+  }
+
+  // Widget untuk membuat spinner waktu
+  Widget _buildTimeSpinner({
+    required int value,
+    required int minValue,
+    required int maxValue,
+    required Function(int) onChanged,
+    required String Function(int) format,
+  }) {
+    return Container(
+      width: 70,
+      height: 160,
+      decoration: BoxDecoration(
+        color: WarnaUtama2,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Stack(
+        children: [
+          // Spinner values
+          ListWheelScrollView.useDelegate(
+            itemExtent: 50,
+            perspective: 0.005,
+            diameterRatio: 1.5,
+            physics: FixedExtentScrollPhysics(),
+            onSelectedItemChanged: (index) {
+              onChanged(index + minValue);
+            },
+            controller:
+                FixedExtentScrollController(initialItem: value - minValue),
+            childDelegate: ListWheelChildBuilderDelegate(
+              childCount: maxValue - minValue + 1,
+              builder: (context, index) {
+                final itemValue = index + minValue;
+                return Center(
+                  child: Text(
+                    format(itemValue),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: itemValue == value
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+
+          // Highlight overlay for selected value
+          Center(
+            child: Container(
+              height: 50,
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(
+                      color: WarnaSecondary.withOpacity(0.5), width: 2),
+                  bottom: BorderSide(
+                      color: WarnaSecondary.withOpacity(0.5), width: 2),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Helper method to format date for display - format DD MMM YY
+  String _formatDate(String? dateString) {
+    if (dateString == null) return 'No Date';
+    try {
+      final date = DateTime.parse(dateString);
+      // Format tanggal sebagai "DD MMM YY" (contoh: "14 Mar 25")
+      return "${date.day.toString().padLeft(2, '0')} ${DateFormat('MMM').format(date)} ${(date.year % 100).toString().padLeft(2, '0')}";
+    } catch (e) {
+      return dateString;
+    }
+  }
+
+  // Helper method to format time for display - only show HH:MM
+  String _formatTime(String? timeString) {
+    if (timeString == null) return 'No';
+
+    try {
+      // Cek apakah format waktu berisi tanggal (format lama)
+      if (timeString.contains('T') || timeString.contains(' ')) {
+        final time = DateTime.parse(timeString);
+        final hour = time.hour.toString().padLeft(2, '0');
+        final minute = time.minute.toString().padLeft(2, '0');
+        return "$hour:$minute";
+      } else {
+        // Format HH:MM:SS - hanya tampilkan HH:MM
+        final parts = timeString.split(':');
+        if (parts.length >= 2) {
+          return "${parts[0]}:${parts[1]}";
+        }
+        return timeString;
+      }
+    } catch (e) {
+      // Jika parsing gagal, tampilkan string asli
+      return timeString;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Dapatkan subtasks yang sudah diurutkan
@@ -375,7 +1099,7 @@ class _TaskDetailState extends State<TaskDetail> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            widget.task['due_date'] ?? '2025/03/13',
+                            _formatDate(widget.task['due_date']),
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 16,
@@ -387,9 +1111,7 @@ class _TaskDetailState extends State<TaskDetail> {
                           ),
                         ],
                       ),
-                      onTap: () {
-                        // TODO: Implement date picker
-                      },
+                      onTap: () => _selectDate(context),
                     ),
 
                     Divider(height: 1, color: WarnaUtama.withOpacity(0.3)),
@@ -411,7 +1133,7 @@ class _TaskDetailState extends State<TaskDetail> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            widget.task['time'] ?? 'No',
+                            _formatTime(widget.task['time']),
                             style: TextStyle(
                               color: Colors.white,
                               fontSize: 16,
@@ -423,9 +1145,7 @@ class _TaskDetailState extends State<TaskDetail> {
                           ),
                         ],
                       ),
-                      onTap: () {
-                        // TODO: Implement time picker
-                      },
+                      onTap: () => _selectTime(context),
                     ),
 
                     Divider(height: 1, color: WarnaUtama.withOpacity(0.3)),
