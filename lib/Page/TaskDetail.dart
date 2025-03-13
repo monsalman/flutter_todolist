@@ -214,7 +214,7 @@ class _TaskDetailState extends State<TaskDetail> {
             builder: (context, setState) {
               return Container(
                 decoration: BoxDecoration(
-                  color: Color(0xFF5D4777), // Purple color from your screenshot
+                  color: WarnaUtama,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(
@@ -268,7 +268,7 @@ class _TaskDetailState extends State<TaskDetail> {
                     // Custom Calendar
                     Container(
                       decoration: BoxDecoration(
-                        color: Color(0xFF5D4777),
+                        color: WarnaUtama,
                         borderRadius: BorderRadius.only(
                           bottomLeft: Radius.circular(16),
                           bottomRight: Radius.circular(16),
@@ -572,38 +572,33 @@ class _TaskDetailState extends State<TaskDetail> {
 
   // Ganti metode _selectTime untuk menyimpan waktu dalam format yang benar
   Future<void> _selectTime(BuildContext context) async {
-    // Parse waktu dari database jika ada
     String? currentTimeString = widget.task['time'];
     TimeOfDay? selectedTime;
 
     if (currentTimeString != null) {
       try {
-        // Coba parse dari format ISO 8601 (format lama)
         if (currentTimeString.contains('T') ||
             currentTimeString.contains(' ')) {
           final dateTime = DateTime.parse(currentTimeString);
           selectedTime =
               TimeOfDay(hour: dateTime.hour, minute: dateTime.minute);
         } else {
-          // Parse dari format HH:MM:SS (format time PostgreSQL)
           final parts = currentTimeString.split(':');
           selectedTime = TimeOfDay(
               hour: int.parse(parts[0]),
               minute: parts.length > 1 ? int.parse(parts[1]) : 0);
         }
       } catch (e) {
-        // Jika parsing gagal, gunakan waktu default
         selectedTime = TimeOfDay.now();
       }
     } else {
-      // Default ke waktu sekarang jika tidak ada waktu tersimpan
       selectedTime = TimeOfDay.now();
     }
 
     int selectedHour = selectedTime.hour;
     int selectedMinute = selectedTime.minute;
 
-    final result = await showDialog<TimeOfDay?>(
+    final result = await showDialog<dynamic>(
       context: context,
       builder: (BuildContext context) {
         return Dialog(
@@ -613,7 +608,7 @@ class _TaskDetailState extends State<TaskDetail> {
             builder: (context, setState) {
               return Container(
                 decoration: BoxDecoration(
-                  color: Color(0xFF5D4777),
+                  color: WarnaUtama,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Column(
@@ -690,7 +685,7 @@ class _TaskDetailState extends State<TaskDetail> {
                         children: [
                           TextButton(
                             onPressed: () {
-                              Navigator.pop(context, null);
+                              Navigator.pop(context, 'no_time');
                             },
                             child: Text(
                               'No Time',
@@ -703,7 +698,8 @@ class _TaskDetailState extends State<TaskDetail> {
                           Row(
                             children: [
                               TextButton(
-                                onPressed: () => Navigator.pop(context),
+                                onPressed: () =>
+                                    Navigator.pop(context, 'cancel'),
                                 child: Text(
                                   'Cancel',
                                   style: TextStyle(
@@ -751,9 +747,37 @@ class _TaskDetailState extends State<TaskDetail> {
     );
 
     // Handle hasil dialog
-    if (result != null) {
+    if (result == 'no_time') {
       try {
-        // Format waktu sebagai string HH:MM:SS untuk tipe time PostgreSQL
+        await Supabase.instance.client.from('tasks').update({
+          'time': null,
+          'updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', widget.task['id']);
+
+        setState(() {
+          widget.task['time'] = null;
+        });
+
+        widget.onTaskUpdated();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Time removed successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error removing time: ${error.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } else if (result is TimeOfDay) {
+      try {
         final timeString =
             '${result.hour.toString().padLeft(2, '0')}:${result.minute.toString().padLeft(2, '0')}:00';
 
@@ -784,36 +808,6 @@ class _TaskDetailState extends State<TaskDetail> {
           );
         }
       }
-    } else {
-      // User selected "No Time"
-      try {
-        await Supabase.instance.client.from('tasks').update({
-          'time': null,
-          'updated_at': DateTime.now().toIso8601String(),
-        }).eq('id', widget.task['id']);
-
-        setState(() {
-          widget.task['time'] = null;
-        });
-
-        widget.onTaskUpdated();
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Time removed successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } catch (error) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Error updating time: ${error.toString()}'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
     }
   }
 
@@ -829,7 +823,7 @@ class _TaskDetailState extends State<TaskDetail> {
       width: 70,
       height: 160,
       decoration: BoxDecoration(
-        color: WarnaUtama2,
+        color: WarnaUtama,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Stack(
