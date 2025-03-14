@@ -51,5 +51,14 @@
 	<string>This app needs access to camera to take photos for task attachments</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app needs access to microphone to record videos for task attachments</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
+	<key>NSCalendarsUsageDescription</key>
+	<string>This app needs access to calendar to schedule task reminders</string>
+	<key>NSNotificationsUsageDescription</key>
+	<string>This app needs to send you notifications for task reminders</string>
 </dict>
 </plist>

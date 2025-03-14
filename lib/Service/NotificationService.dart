@@ -18,12 +18,9 @@ class NotificationService {
   NotificationService._internal();
 
   Future<void> init() async {
-    print('Initializing notification service');
-
     // Initialize timezone first
     tz.initializeTimeZones();
     tz.setLocalLocation(tz.getLocation('Asia/Jakarta'));
-    print('Timezone initialized');
 
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -44,22 +41,16 @@ class NotificationService {
     await flutterLocalNotificationsPlugin.initialize(
       initializationSettings,
       onDidReceiveNotificationResponse: (NotificationResponse details) async {
-        print('Notification tapped: ${details.payload}');
         // Handle notification response here
       },
     );
 
-    // Request permissions immediately
     await _requestPermissions();
-    print('Notification service initialized');
   }
 
   Future<void> _requestPermissions() async {
-    print('Requesting notification permissions');
-
     if (Platform.isIOS) {
-      print('Requesting iOS permissions');
-      final bool? result = await flutterLocalNotificationsPlugin
+      await flutterLocalNotificationsPlugin
           .resolvePlatformSpecificImplementation<
               IOSFlutterLocalNotificationsPlugin>()
           ?.requestPermissions(
@@ -67,16 +58,11 @@ class NotificationService {
             badge: true,
             sound: true,
           );
-      print('iOS permission result: $result');
     } else if (Platform.isAndroid) {
-      print('Requesting Android permissions');
-      final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
-          flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>();
-
-      final bool? granted =
-          await androidImplementation?.requestNotificationsPermission();
-      print('Android permission granted: $granted');
+      await flutterLocalNotificationsPlugin
+          .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin>()
+          ?.requestNotificationsPermission();
     }
   }
 
@@ -87,10 +73,6 @@ class NotificationService {
   }) async {
     try {
       final scheduledTime = tz.TZDateTime.from(scheduledDate, tz.local);
-      print('Scheduling notification:');
-      print('ID: $id');
-      print('Title: $title');
-      print('Scheduled time: $scheduledTime');
 
       final AndroidNotificationChannel channel = AndroidNotificationChannel(
         CHANNEL_ID,
@@ -140,9 +122,7 @@ class NotificationService {
             UILocalNotificationDateInterpretation.absoluteTime,
         payload: 'task_$id',
       );
-      print('Notification scheduled successfully');
     } catch (e) {
-      print('Error scheduling notification: $e');
       rethrow;
     }
   }

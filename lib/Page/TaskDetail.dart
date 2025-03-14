@@ -458,22 +458,14 @@ class _TaskDetailState extends State<TaskDetail> {
 
           if (scheduledDate.isAfter(DateTime.now())) {
             try {
-              print(
-                  'Attempting to schedule notification for task: ${widget.task['title']}');
-              print('Scheduled for: $scheduledDate');
-
               final notificationId = _getNotificationId(widget.task['id']);
-              print('Generated notification ID: $notificationId');
 
               await _notificationService.scheduleTaskNotification(
                 id: notificationId,
                 title: widget.task['title'],
                 scheduledDate: scheduledDate,
               );
-
-              print('Notification scheduled successfully');
             } catch (e) {
-              print('Error scheduling notification: $e');
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content:
@@ -862,22 +854,14 @@ class _TaskDetailState extends State<TaskDetail> {
 
           if (scheduledDate.isAfter(DateTime.now())) {
             try {
-              print(
-                  'Attempting to schedule notification for task: ${widget.task['title']}');
-              print('Scheduled for: $scheduledDate');
-
               final notificationId = _getNotificationId(widget.task['id']);
-              print('Generated notification ID: $notificationId');
 
               await _notificationService.scheduleTaskNotification(
                 id: notificationId,
                 title: widget.task['title'],
                 scheduledDate: scheduledDate,
               );
-
-              print('Notification scheduled successfully');
             } catch (e) {
-              print('Error scheduling notification: $e');
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content:
@@ -886,8 +870,6 @@ class _TaskDetailState extends State<TaskDetail> {
                 ),
               );
             }
-          } else {
-            print('Scheduled date is in the past: $scheduledDate');
           }
         }
 
@@ -1545,7 +1527,6 @@ class _TaskDetailState extends State<TaskDetail> {
 
   @override
   Widget build(BuildContext context) {
-    // Dapatkan subtasks yang sudah diurutkan
     final sortedSubtasks = _getSortedSubtasks();
 
     return Scaffold(
@@ -1557,31 +1538,6 @@ class _TaskDetailState extends State<TaskDetail> {
           icon: Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
-        actions: [
-          // Tambahkan tombol test di AppBar
-          IconButton(
-            icon: Icon(Icons.notification_add, color: Colors.white),
-            onPressed: () async {
-              try {
-                await _notificationService.showTestNotification();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Test notification sent'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                        'Failed to send test notification: ${e.toString()}'),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-          ),
-        ],
       ),
       body: SingleChildScrollView(
         child: Padding(
