@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../Navbar/NavBar.dart';
+import '../Service/NotificationService.dart';
 import '../main.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
@@ -32,6 +33,7 @@ class _TaskDetailState extends State<TaskDetail> {
   List<String> _attachmentPaths = [];
   List<String> _attachmentUrls = [];
   bool _isUploading = false;
+  final NotificationService _notificationService = NotificationService();
 
   @override
   void initState() {
@@ -430,7 +432,6 @@ class _TaskDetailState extends State<TaskDetail> {
 
     if (result != null) {
       try {
-        // Format tanggal sebagai YYYY-MM-DD (tanpa jam)
         final dateString =
             "${result.year}-${result.month.toString().padLeft(2, '0')}-${result.day.toString().padLeft(2, '0')}";
 
@@ -442,6 +443,49 @@ class _TaskDetailState extends State<TaskDetail> {
         setState(() {
           widget.task['due_date'] = dateString;
         });
+
+        // Schedule notification if both date and time are set
+        if (widget.task['due_date'] != null && widget.task['time'] != null) {
+          final date = DateTime.parse(dateString);
+          final time = widget.task['time'].split(':');
+          final scheduledDate = DateTime(
+            date.year,
+            date.month,
+            date.day,
+            int.parse(time[0]),
+            int.parse(time[1]),
+          );
+
+          if (scheduledDate.isAfter(DateTime.now())) {
+            try {
+              print(
+                  'Attempting to schedule notification for task: ${widget.task['title']}');
+              print('Scheduled for: $scheduledDate');
+
+              final notificationId = _getNotificationId(widget.task['id']);
+              print('Generated notification ID: $notificationId');
+
+              await _notificationService.scheduleTaskNotification(
+                id: notificationId,
+                title: widget.task['title'],
+                scheduledDate: scheduledDate,
+              );
+
+              print('Notification scheduled successfully');
+            } catch (e) {
+              print('Error scheduling notification: $e');
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content:
+                      Text('Failed to schedule notification: ${e.toString()}'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          } else {
+            print('Scheduled date is in the past: $scheduledDate');
+          }
+        }
 
         widget.onTaskUpdated();
 
@@ -803,6 +847,49 @@ class _TaskDetailState extends State<TaskDetail> {
         setState(() {
           widget.task['time'] = timeString;
         });
+
+        // Schedule notification if both date and time are set
+        if (widget.task['due_date'] != null && widget.task['time'] != null) {
+          final date = DateTime.parse(widget.task['due_date']);
+          final time = timeString.split(':');
+          final scheduledDate = DateTime(
+            date.year,
+            date.month,
+            date.day,
+            int.parse(time[0]),
+            int.parse(time[1]),
+          );
+
+          if (scheduledDate.isAfter(DateTime.now())) {
+            try {
+              print(
+                  'Attempting to schedule notification for task: ${widget.task['title']}');
+              print('Scheduled for: $scheduledDate');
+
+              final notificationId = _getNotificationId(widget.task['id']);
+              print('Generated notification ID: $notificationId');
+
+              await _notificationService.scheduleTaskNotification(
+                id: notificationId,
+                title: widget.task['title'],
+                scheduledDate: scheduledDate,
+              );
+
+              print('Notification scheduled successfully');
+            } catch (e) {
+              print('Error scheduling notification: $e');
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content:
+                      Text('Failed to schedule notification: ${e.toString()}'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          } else {
+            print('Scheduled date is in the past: $scheduledDate');
+          }
+        }
 
         widget.onTaskUpdated();
 
@@ -1225,7 +1312,6 @@ class _TaskDetailState extends State<TaskDetail> {
 
     try {
       final String filePath = _attachmentPaths[index];
-      print('Attempting to delete file: $filePath');
 
       // Hapus file dari storage
       await Supabase.instance.client.storage
@@ -1447,6 +1533,16 @@ class _TaskDetailState extends State<TaskDetail> {
     );
   }
 
+  // Update fungsi _getNotificationId
+  int _getNotificationId(String uuid) {
+    // Mengambil 5 karakter terakhir dari UUID
+    final lastFiveChars = uuid.substring(uuid.length - 5);
+    // Mengkonversi karakter hexadecimal ke integer
+    final intValue = int.parse(lastFiveChars, radix: 16);
+    // Menggunakan modulo untuk memastikan nilai selalu di bawah 100000
+    return intValue % 100000;
+  }
+
   @override
   Widget build(BuildContext context) {
     // Dapatkan subtasks yang sudah diurutkan
@@ -1461,6 +1557,31 @@ class _TaskDetailState extends State<TaskDetail> {
           icon: Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          // Tambahkan tombol test di AppBar
+          IconButton(
+            icon: Icon(Icons.notification_add, color: Colors.white),
+            onPressed: () async {
+              try {
+                await _notificationService.showTestNotification();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Test notification sent'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } catch (e) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                        'Failed to send test notification: ${e.toString()}'),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Padding(

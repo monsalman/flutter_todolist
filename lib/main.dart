@@ -3,11 +3,19 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 import 'A-SplashScreen.dart';
+import 'Service/NotificationService.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Aktifkan kembali inisialisasi dotenv dan Supabase
+  // Initialize notification service
+  try {
+    await NotificationService().init();
+  } catch (e) {
+    print('Error initializing notifications: $e');
+  }
+
+  // Load env and initialize Supabase
   await dotenv.load(fileName: ".env");
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL'] ?? '',
