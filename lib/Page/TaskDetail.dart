@@ -3,6 +3,8 @@ import '../Navbar/NavBar.dart';
 import '../main.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class TaskDetail extends StatefulWidget {
   final Map<String, dynamic> task;
@@ -25,6 +27,8 @@ class _TaskDetailState extends State<TaskDetail> {
   List<String> categories = [];
   final GlobalKey _categoryKey = GlobalKey();
   bool _isMenuOpen = false;
+  List<String> _attachmentUrls = [];
+  bool _isUploading = false;
 
   @override
   void initState() {
@@ -40,6 +44,13 @@ class _TaskDetailState extends State<TaskDetail> {
       }).toList();
     }
     _loadCategories();
+    if (widget.task['attachment'] != null) {
+      if (widget.task['attachment'] is List) {
+        _attachmentUrls = List<String>.from(widget.task['attachment']);
+      } else if (widget.task['attachment'] is String) {
+        _attachmentUrls = [widget.task['attachment']];
+      }
+    }
   }
 
   @override
@@ -716,8 +727,6 @@ class _TaskDetailState extends State<TaskDetail> {
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
-                                  padding: EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 8),
                                 ),
                                 onPressed: () => Navigator.pop(
                                     context,
@@ -1051,6 +1060,257 @@ class _TaskDetailState extends State<TaskDetail> {
     }
   }
 
+  Future<void> _handleAttachment() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+
+      final source = await showDialog<ImageSource>(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: WarnaUtama,
+            title: Text(
+              'Select Image Source',
+              style: TextStyle(color: Colors.white),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: Icon(Icons.photo_library, color: Colors.white),
+                  title: Text('Gallery', style: TextStyle(color: Colors.white)),
+                  onTap: () => Navigator.pop(context, ImageSource.gallery),
+                ),
+                ListTile(
+                  leading: Icon(Icons.camera_alt, color: Colors.white),
+                  title: Text('Camera', style: TextStyle(color: Colors.white)),
+                  onTap: () => Navigator.pop(context, ImageSource.camera),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+
+      if (source == null) return;
+
+      final XFile? image = await picker.pickImage(
+        source: source,
+        imageQuality: 70,
+        maxWidth: 1000,
+      );
+
+      if (image == null) return;
+
+      setState(() {
+        _isUploading = true;
+      });
+
+      // Upload new image
+      final String fileName =
+          '${DateTime.now().millisecondsSinceEpoch}_${image.name}';
+      final File file = File(image.path);
+
+      // Upload to Supabase Storage
+      await Supabase.instance.client.storage
+          .from('task-attachments')
+          .upload(fileName, file);
+
+      // Get public URL
+      final String publicUrl = Supabase.instance.client.storage
+          .from('task-attachments')
+          .getPublicUrl(fileName);
+
+      // Add new URL to list
+      _attachmentUrls.add(publicUrl);
+
+      // Update task record with array of URLs
+      await Supabase.instance.client.from('tasks').update({
+        'attachment': _attachmentUrls,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', widget.task['id']);
+
+      setState(() {
+        widget.task['attachment'] = _attachmentUrls;
+      });
+
+      widget.onTaskUpdated();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Image uploaded successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (error) {
+      print('Error in _handleAttachment: $error');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error uploading image: ${error.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isUploading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _deleteAttachment(int index) async {
+    try {
+      // Extract filename from URL
+      final uri = Uri.parse(_attachmentUrls[index]);
+      final fileName = uri.pathSegments.last;
+
+      // Delete from storage
+      await Supabase.instance.client.storage
+          .from('task-attachments')
+          .remove([fileName]);
+
+      // Remove URL from list
+      setState(() {
+        _attachmentUrls.removeAt(index);
+      });
+
+      // Update task record
+      await Supabase.instance.client.from('tasks').update({
+        'attachment': _attachmentUrls,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', widget.task['id']);
+
+      widget.task['attachment'] = _attachmentUrls;
+      widget.onTaskUpdated();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Attachment deleted successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting attachment: ${error.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildAttachmentSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ListTile(
+          leading: Icon(
+            Icons.attach_file,
+            color: Colors.white,
+          ),
+          title: Text(
+            'Attachment',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+            ),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_isUploading)
+                SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(WarnaSecondary),
+                  ),
+                )
+              else
+                Text(
+                  'Add',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                  ),
+                ),
+              Icon(
+                Icons.chevron_right,
+                color: Colors.white,
+              ),
+            ],
+          ),
+          onTap: _isUploading ? null : _handleAttachment,
+        ),
+        if (_attachmentUrls.isNotEmpty) ...[
+          Padding(
+            padding: EdgeInsets.only(left: 20, right: 15, bottom: 8),
+            child: Wrap(
+              spacing: 8, // jarak horizontal antar gambar
+              runSpacing: 8, // jarak vertical antar baris
+              children: [
+                for (var i = 0; i < _attachmentUrls.length; i++)
+                  Container(
+                    width: 100, // Fixed width
+                    height: 100, // Fixed height
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white24),
+                    ),
+                    child: Stack(
+                      children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.network(
+                            _attachmentUrls[i],
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                          ),
+                        ),
+                        Positioned(
+                          top: 4,
+                          right: 4,
+                          child: GestureDetector(
+                            onTap: () => _deleteAttachment(i),
+                            child: Container(
+                              padding: EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: Colors.black45,
+                                borderRadius: BorderRadius.only(
+                                  topRight: Radius.circular(8),
+                                  bottomLeft: Radius.circular(8),
+                                ),
+                              ),
+                              child: Icon(
+                                Icons.close,
+                                color: Colors.white,
+                                size: 14,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Dapatkan subtasks yang sudah diurutkan
@@ -1346,43 +1606,7 @@ class _TaskDetailState extends State<TaskDetail> {
                     Divider(height: 1, color: WarnaUtama.withOpacity(0.3)),
 
                     // Attachment Row
-                    ListTile(
-                      leading: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.attach_file,
-                            color: Colors.white,
-                          ),
-                        ],
-                      ),
-                      title: Text(
-                        'Attachment',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                        ),
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            widget.task['attachment'] != null ? 'View' : 'Add',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                            ),
-                          ),
-                          Icon(
-                            Icons.chevron_right,
-                            color: Colors.white,
-                          ),
-                        ],
-                      ),
-                      onTap: () {
-                        // TODO: Implement attachment handling
-                      },
-                    ),
+                    _buildAttachmentSection(),
                   ],
                 ),
               ),
