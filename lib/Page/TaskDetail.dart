@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'package:path/path.dart' as path;
 
 class TaskDetail extends StatefulWidget {
   final Map<String, dynamic> task;
@@ -27,6 +28,8 @@ class _TaskDetailState extends State<TaskDetail> {
   List<String> categories = [];
   final GlobalKey _categoryKey = GlobalKey();
   bool _isMenuOpen = false;
+  final ImagePicker _picker = ImagePicker();
+  List<String> _attachmentPaths = [];
   List<String> _attachmentUrls = [];
   bool _isUploading = false;
 
@@ -44,12 +47,12 @@ class _TaskDetailState extends State<TaskDetail> {
       }).toList();
     }
     _loadCategories();
-    if (widget.task['attachment'] != null) {
-      if (widget.task['attachment'] is List) {
-        _attachmentUrls = List<String>.from(widget.task['attachment']);
-      } else if (widget.task['attachment'] is String) {
-        _attachmentUrls = [widget.task['attachment']];
-      }
+
+    // Inisialisasi attachments
+    if (widget.task['attachments'] != null) {
+      _attachmentPaths = List<String>.from(widget.task['attachments']);
+      _attachmentUrls = [];
+      _loadAttachmentUrls();
     }
   }
 
@@ -727,6 +730,8 @@ class _TaskDetailState extends State<TaskDetail> {
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(8),
                                   ),
+                                  padding: EdgeInsets.symmetric(
+                                      horizontal: 16, vertical: 8),
                                 ),
                                 onPressed: () => Navigator.pop(
                                     context,
@@ -1060,165 +1065,217 @@ class _TaskDetailState extends State<TaskDetail> {
     }
   }
 
-  Future<void> _handleAttachment() async {
-    try {
-      final ImagePicker picker = ImagePicker();
-
-      final source = await showDialog<ImageSource>(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            backgroundColor: WarnaUtama,
-            title: Text(
-              'Select Image Source',
-              style: TextStyle(color: Colors.white),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                ListTile(
-                  leading: Icon(Icons.photo_library, color: Colors.white),
-                  title: Text('Gallery', style: TextStyle(color: Colors.white)),
-                  onTap: () => Navigator.pop(context, ImageSource.gallery),
-                ),
-                ListTile(
-                  leading: Icon(Icons.camera_alt, color: Colors.white),
-                  title: Text('Camera', style: TextStyle(color: Colors.white)),
-                  onTap: () => Navigator.pop(context, ImageSource.camera),
-                ),
-              ],
-            ),
-          );
-        },
-      );
-
-      if (source == null) return;
-
-      final XFile? image = await picker.pickImage(
-        source: source,
-        imageQuality: 70,
-        maxWidth: 1000,
-      );
-
-      if (image == null) return;
-
+  // Method untuk load semua attachment URLs
+  Future<void> _loadAttachmentUrls() async {
+    for (String path in _attachmentPaths) {
+      final url = await Supabase.instance.client.storage
+          .from('attachments')
+          .createSignedUrl(path, 3600);
       setState(() {
-        _isUploading = true;
+        _attachmentUrls.add(url);
       });
+    }
+  }
 
-      // Upload new image
+  // Update method handle attachment
+  Future<void> _handleAttachment() async {
+    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
+    if (image == null) return;
+
+    setState(() {
+      _isUploading = true;
+    });
+
+    try {
+      final User? user = Supabase.instance.client.auth.currentUser;
+      if (user == null) throw Exception('User not authenticated');
+
+      // Generate nama file baru
       final String fileName =
-          '${DateTime.now().millisecondsSinceEpoch}_${image.name}';
-      final File file = File(image.path);
+          '${user.id}/${DateTime.now().millisecondsSinceEpoch}${path.extension(image.path)}';
+      final file = File(image.path);
 
-      // Upload to Supabase Storage
+      // Upload file baru
       await Supabase.instance.client.storage
-          .from('task-attachments')
+          .from('attachments')
           .upload(fileName, file);
 
-      // Get public URL
-      final String publicUrl = Supabase.instance.client.storage
-          .from('task-attachments')
-          .getPublicUrl(fileName);
+      // Get signed URL
+      final String signedUrl = await Supabase.instance.client.storage
+          .from('attachments')
+          .createSignedUrl(fileName, 3600);
 
-      // Add new URL to list
-      _attachmentUrls.add(publicUrl);
-
-      // Update task record with array of URLs
+      // Update database dengan menambahkan attachment baru ke array
+      _attachmentPaths.add(fileName);
       await Supabase.instance.client.from('tasks').update({
-        'attachment': _attachmentUrls,
+        'attachments': _attachmentPaths,
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', widget.task['id']);
 
+      // Update state
       setState(() {
-        widget.task['attachment'] = _attachmentUrls;
+        _attachmentUrls.add(signedUrl);
+        _isUploading = false;
       });
 
       widget.onTaskUpdated();
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Image uploaded successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Attachment added successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
     } catch (error) {
-      print('Error in _handleAttachment: $error');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error uploading image: ${error.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isUploading = false;
-        });
-      }
+      setState(() {
+        _isUploading = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error adding attachment: ${error.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
-  Future<void> _deleteAttachment(int index) async {
+  // Update method remove attachment
+  Future<void> _removeAttachment(int index) async {
+    // Tampilkan dialog konfirmasi
+    bool? confirmDelete = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            decoration: BoxDecoration(
+              color: WarnaUtama,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.amber,
+                  size: 48,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Delete Attachment',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Are you sure you want to delete this attachment?',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                ),
+                SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: () => Navigator.pop(context, true),
+                      child: Text(
+                        'Delete',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    // Jika user membatalkan, keluar dari method
+    if (confirmDelete != true) return;
+
     try {
-      // Extract filename from URL
-      final uri = Uri.parse(_attachmentUrls[index]);
-      final fileName = uri.pathSegments.last;
+      final String filePath = _attachmentPaths[index];
+      print('Attempting to delete file: $filePath');
 
-      // Delete from storage
+      // Hapus file dari storage
       await Supabase.instance.client.storage
-          .from('task-attachments')
-          .remove([fileName]);
+          .from('attachments')
+          .remove([filePath]);
 
-      // Remove URL from list
+      // Update database
+      _attachmentPaths.removeAt(index);
+      await Supabase.instance.client.from('tasks').update({
+        'attachments': _attachmentPaths,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', widget.task['id']);
+
+      // Update state
       setState(() {
         _attachmentUrls.removeAt(index);
       });
 
-      // Update task record
-      await Supabase.instance.client.from('tasks').update({
-        'attachment': _attachmentUrls,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', widget.task['id']);
-
-      widget.task['attachment'] = _attachmentUrls;
       widget.onTaskUpdated();
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Attachment deleted successfully'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Attachment removed successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
     } catch (error) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error deleting attachment: ${error.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      print('Error removing attachment: $error');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error removing attachment: ${error.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
-  Widget _buildAttachmentSection() {
+  // Update UI untuk menampilkan multiple attachments
+  Widget _buildAttachmentsSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Header Attachments dengan Add button
         ListTile(
           leading: Icon(
             Icons.attach_file,
             color: Colors.white,
           ),
           title: Text(
-            'Attachment',
+            'Attachments (${_attachmentUrls.length})',
             style: TextStyle(
               color: Colors.white,
               fontSize: 16,
@@ -1250,63 +1307,142 @@ class _TaskDetailState extends State<TaskDetail> {
               ),
             ],
           ),
-          onTap: _isUploading ? null : _handleAttachment,
+          onTap: _handleAttachment,
         ),
-        if (_attachmentUrls.isNotEmpty) ...[
+
+        // Grid Preview Images
+        if (_attachmentUrls.isNotEmpty)
           Padding(
-            padding: EdgeInsets.only(left: 20, right: 15, bottom: 8),
-            child: Wrap(
-              spacing: 8, // jarak horizontal antar gambar
-              runSpacing: 8, // jarak vertical antar baris
-              children: [
-                for (var i = 0; i < _attachmentUrls.length; i++)
-                  Container(
-                    width: 100, // Fixed width
-                    height: 100, // Fixed height
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white24),
-                    ),
-                    child: Stack(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            _attachmentUrls[i],
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity,
-                          ),
+            padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final double itemWidth = (constraints.maxWidth - 16) / 3;
+                return Wrap(
+                  spacing: 8, // gap between adjacent items horizontally
+                  runSpacing: 8, // gap between lines
+                  children: List.generate(_attachmentUrls.length, (index) {
+                    return Container(
+                      width: itemWidth,
+                      height: itemWidth,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.1),
+                          width: 1,
                         ),
-                        Positioned(
-                          top: 4,
-                          right: 4,
-                          child: GestureDetector(
-                            onTap: () => _deleteAttachment(i),
-                            child: Container(
-                              padding: EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                color: Colors.black45,
-                                borderRadius: BorderRadius.only(
-                                  topRight: Radius.circular(8),
-                                  bottomLeft: Radius.circular(8),
-                                ),
-                              ),
-                              child: Icon(
-                                Icons.close,
-                                color: Colors.white,
-                                size: 14,
+                      ),
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          // Image
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              _attachmentUrls[index],
+                              fit: BoxFit.cover,
+                              headers: {
+                                'Authorization':
+                                    'Bearer ${Supabase.instance.client.auth.currentSession?.accessToken}'
+                              },
+                              loadingBuilder:
+                                  (context, child, loadingProgress) {
+                                if (loadingProgress == null) return child;
+                                return Container(
+                                  color: Colors.grey[800],
+                                  child: Center(
+                                    child: CircularProgressIndicator(
+                                      value:
+                                          loadingProgress.expectedTotalBytes !=
+                                                  null
+                                              ? loadingProgress
+                                                      .cumulativeBytesLoaded /
+                                                  loadingProgress
+                                                      .expectedTotalBytes!
+                                              : null,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        WarnaSecondary,
+                                      ),
+                                      strokeWidth: 2,
+                                    ),
+                                  ),
+                                );
+                              },
+                              errorBuilder: (context, error, stackTrace) {
+                                return Container(
+                                  color: Colors.grey[800],
+                                  child: Center(
+                                    child: Column(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Icon(
+                                          Icons.error_outline,
+                                          color: Colors.white70,
+                                          size: 20,
+                                        ),
+                                        SizedBox(height: 4),
+                                        Text(
+                                          'Error',
+                                          style: TextStyle(
+                                            color: Colors.white70,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+
+                          // Tap to View Full Image
+                          Positioned.fill(
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(8),
+                                onTap: () {
+                                  // TODO: Implement full image view
+                                },
+                                splashColor: Colors.white.withOpacity(0.1),
+                                highlightColor: Colors.white.withOpacity(0.1),
                               ),
                             ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
+
+                          // Delete Button - Pindahkan ke layer paling atas
+                          Positioned(
+                            top: 4,
+                            right: 4,
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: () => _removeAttachment(index),
+                                borderRadius: BorderRadius.circular(12),
+                                child: Container(
+                                  padding: EdgeInsets.all(4),
+                                  decoration: BoxDecoration(
+                                    color: Colors.black.withOpacity(0.6),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: Icon(
+                                    Icons.close,
+                                    color: Colors.white,
+                                    size: 14,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                );
+              },
             ),
           ),
-        ],
       ],
     );
   }
@@ -1602,11 +1738,8 @@ class _TaskDetailState extends State<TaskDetail> {
                       ),
                       onTap: () => _editNotes(context),
                     ),
-
                     Divider(height: 1, color: WarnaUtama.withOpacity(0.3)),
-
-                    // Attachment Row
-                    _buildAttachmentSection(),
+                    _buildAttachmentsSection(),
                   ],
                 ),
               ),
