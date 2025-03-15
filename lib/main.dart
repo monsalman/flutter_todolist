@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-import 'A-SplashScreen.dart';
+import 'Service/SplashScreen.dart';
 import 'Service/NotificationService.dart';
 
 Future<void> main() async {
