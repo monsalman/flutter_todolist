@@ -1471,7 +1471,50 @@ class _TaskDetailState extends State<TaskDetail> {
                               child: InkWell(
                                 borderRadius: BorderRadius.circular(8),
                                 onTap: () {
-                                  // TODO: Implement full image view
+                                  showDialog(
+                                    context: context,
+                                    builder: (BuildContext context) {
+                                      return Dialog(
+                                        backgroundColor: Colors.transparent,
+                                        insetPadding: EdgeInsets.zero,
+                                        child: Stack(
+                                          fit: StackFit.expand,
+                                          children: [
+                                            // Image with InteractiveViewer for zoom and pan
+                                            InteractiveViewer(
+                                              minScale: 0.5,
+                                              maxScale: 4.0,
+                                              child: Image.network(
+                                                _attachmentUrls[index],
+                                                fit: BoxFit.contain,
+                                                headers: {
+                                                  'Authorization':
+                                                      'Bearer ${Supabase.instance.client.auth.currentSession?.accessToken}'
+                                                },
+                                              ),
+                                            ),
+                                            // Close button
+                                            Positioned(
+                                              top: 40,
+                                              right: 20,
+                                              child: Material(
+                                                color: Colors.black
+                                                    .withOpacity(0.5),
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                                child: IconButton(
+                                                  icon: Icon(Icons.close,
+                                                      color: Colors.white),
+                                                  onPressed: () =>
+                                                      Navigator.pop(context),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  );
                                 },
                                 splashColor: Colors.white.withOpacity(0.1),
                                 highlightColor: Colors.white.withOpacity(0.1),
@@ -1754,7 +1797,6 @@ class _TaskDetailState extends State<TaskDetail> {
                 ),
               ),
 
-              // Card 2: Notes and Attachments
               Container(
                 decoration: BoxDecoration(
                   color: WarnaUtama2,
