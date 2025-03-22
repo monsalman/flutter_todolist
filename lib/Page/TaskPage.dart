@@ -14,9 +14,12 @@ class TaskPage extends StatefulWidget {
 class _TaskPageState extends State<TaskPage> {
   List<String> categories = [];
   String? selectedCategory;
+  String selectedTimeFilter = 'Today';
   final _formKey = GlobalKey<FormState>();
   final _taskController = TextEditingController();
   List<Map<String, dynamic>> tasks = [];
+  bool isTodayExpanded = true;
+  bool isUpcomingExpanded = true;
 
   @override
   void initState() {
@@ -70,10 +73,30 @@ class _TaskPageState extends State<TaskPage> {
           query = query.eq('category', selectedCategory!);
         }
 
-        final data = await query.order('created_at', ascending: false);
+        final data = await query.order('due_date', ascending: true);
+
+        final now = DateTime.now();
+        final today = DateTime(now.year, now.month, now.day);
+
+        final todayTasks = <Map<String, dynamic>>[];
+        final upcomingTasks = <Map<String, dynamic>>[];
+
+        for (var task in List<Map<String, dynamic>>.from(data)) {
+          if (task['due_date'] != null) {
+            final taskDate = DateTime.parse(task['due_date']).toLocal();
+            final taskDay =
+                DateTime(taskDate.year, taskDate.month, taskDate.day);
+
+            if (taskDay.isAtSameMomentAs(today)) {
+              todayTasks.add(task);
+            } else if (taskDay.isAfter(today)) {
+              upcomingTasks.add(task);
+            }
+          }
+        }
 
         setState(() {
-          tasks = List<Map<String, dynamic>>.from(data);
+          tasks = [...todayTasks, ...upcomingTasks];
         });
       }
     } catch (error) {
@@ -156,6 +179,24 @@ class _TaskPageState extends State<TaskPage> {
 
   @override
   Widget build(BuildContext context) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    // Pisahkan tasks menjadi today dan upcoming
+    final todayTasks = tasks.where((task) {
+      if (task['due_date'] == null) return false;
+      final taskDate = DateTime.parse(task['due_date']).toLocal();
+      final taskDay = DateTime(taskDate.year, taskDate.month, taskDate.day);
+      return taskDay.isAtSameMomentAs(today);
+    }).toList();
+
+    final upcomingTasks = tasks.where((task) {
+      if (task['due_date'] == null) return false;
+      final taskDate = DateTime.parse(task['due_date']).toLocal();
+      final taskDay = DateTime(taskDate.year, taskDate.month, taskDate.day);
+      return taskDay.isAfter(today);
+    }).toList();
+
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
@@ -207,78 +248,74 @@ class _TaskPageState extends State<TaskPage> {
       ),
       body: Container(
         color: WarnaUtama,
-        child: ListView.builder(
+        child: ListView(
           padding: EdgeInsets.only(top: 15, left: 10, right: 10),
-          itemCount: tasks.length,
-          itemBuilder: (context, index) {
-            final task = tasks[index];
-            final bool isCompleted = task['is_completed'] ?? false;
-
-            return Card(
-              margin: EdgeInsets.only(bottom: 12),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              color: WarnaUtama2,
-              child: ListTile(
-                contentPadding: EdgeInsets.symmetric(horizontal: 10),
-                onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => TaskDetail(
-                        task: task,
-                        onTaskUpdated: () {
-                          _loadTasks();
-                        },
+          children: [
+            // Upcoming Section
+            InkWell(
+              onTap: () {
+                setState(() {
+                  isUpcomingExpanded = !isUpcomingExpanded;
+                });
+              },
+              child: Padding(
+                padding: EdgeInsets.only(bottom: 10),
+                child: Row(
+                  children: [
+                    Text(
+                      'Upcoming',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  );
-                },
-                leading: Transform.scale(
-                  scale: 1.2,
-                  child: Checkbox(
-                    value: isCompleted,
-                    onChanged: (bool? value) {
-                      if (value != null) {
-                        final taskId = task['id'];
-                        if (taskId != null) {
-                          _updateTaskStatus(taskId, value);
-                        }
-                      }
-                    },
-                    activeColor: WarnaSecondary,
-                    checkColor: WarnaUtama,
-                    side: BorderSide(
-                      color: WarnaSecondary,
-                      width: 2,
+                    SizedBox(width: 8),
+                    Icon(
+                      isUpcomingExpanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                      color: Colors.white,
                     ),
-                    fillColor: MaterialStateProperty.resolveWith<Color>(
-                      (Set<MaterialState> states) {
-                        if (states.contains(MaterialState.selected)) {
-                          return WarnaSecondary;
-                        }
-                        return Colors.transparent;
-                      },
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  ),
-                ),
-                title: Text(
-                  task['title'] ?? '',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    decoration: isCompleted ? TextDecoration.lineThrough : null,
-                    decorationColor: WarnaSecondary,
-                    decorationThickness: 1.5,
-                  ),
+                  ],
                 ),
               ),
-            );
-          },
+            ),
+            if (isUpcomingExpanded)
+              ...upcomingTasks.map((task) => _buildTaskCard(task)),
+            // Today Section
+            InkWell(
+              onTap: () {
+                setState(() {
+                  isTodayExpanded = !isTodayExpanded;
+                });
+              },
+              child: Padding(
+                padding: EdgeInsets.only(bottom: 10),
+                child: Row(
+                  children: [
+                    Text(
+                      'Today',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Icon(
+                      isTodayExpanded
+                          ? Icons.keyboard_arrow_up
+                          : Icons.keyboard_arrow_down,
+                      color: Colors.white,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (isTodayExpanded)
+              ...todayTasks.map((task) => _buildTaskCard(task)),
+          ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -429,6 +466,103 @@ class _TaskPageState extends State<TaskPage> {
             color: isSelected ? WarnaUtama : Colors.white,
             fontWeight: FontWeight.bold,
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTaskCard(Map<String, dynamic> task) {
+    final bool isCompleted = task['is_completed'] ?? false;
+
+    return Card(
+      margin: EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(15),
+      ),
+      color: WarnaUtama2,
+      child: ListTile(
+        contentPadding: EdgeInsets.only(left: 4, right: 10),
+        horizontalTitleGap: 0,
+        onTap: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => TaskDetail(
+                task: task,
+                onTaskUpdated: () {
+                  _loadTasks();
+                },
+              ),
+            ),
+          );
+        },
+        leading: Transform.scale(
+          scale: 1.2,
+          child: Checkbox(
+            value: isCompleted,
+            onChanged: (bool? value) {
+              if (value != null) {
+                final taskId = task['id'];
+                if (taskId != null) {
+                  _updateTaskStatus(taskId, value);
+                }
+              }
+            },
+            activeColor: WarnaSecondary,
+            checkColor: WarnaUtama,
+            side: BorderSide(
+              color: WarnaSecondary,
+              width: 2,
+            ),
+            fillColor: MaterialStateProperty.resolveWith<Color>(
+              (Set<MaterialState> states) {
+                if (states.contains(MaterialState.selected)) {
+                  return WarnaSecondary;
+                }
+                return Colors.transparent;
+              },
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              task['title'] ?? '',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                decoration: isCompleted ? TextDecoration.lineThrough : null,
+                decorationColor: WarnaSecondary,
+                decorationThickness: 1.5,
+              ),
+            ),
+            SizedBox(height: 4),
+            Row(
+              children: [
+                Text(
+                  task['time'] != null ? '${task['time']}'.substring(0, 5) : '',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                  ),
+                ),
+                SizedBox(width: 5),
+                Text(
+                  task['due_date'] != null
+                      ? '${DateTime.parse(task['due_date']).toLocal().toString().substring(8, 10)}-${DateTime.parse(task['due_date']).toLocal().toString().substring(5, 7)}'
+                      : '',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ),
     );
