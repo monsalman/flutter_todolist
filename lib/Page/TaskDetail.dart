@@ -8,6 +8,13 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'package:path/path.dart' as path;
 
+extension StringExtension on String {
+  String capitalize() {
+    if (this.isEmpty) return this;
+    return "${this[0].toUpperCase()}${this.substring(1).toLowerCase()}";
+  }
+}
+
 class TaskDetail extends StatefulWidget {
   final Map<String, dynamic> task;
   final VoidCallback onTaskUpdated;
@@ -28,12 +35,14 @@ class _TaskDetailState extends State<TaskDetail> {
   bool _showInputField = false;
   List<String> categories = [];
   final GlobalKey _categoryKey = GlobalKey();
-  bool _isMenuOpen = false;
+  bool _isCategoryMenuOpen = false;
+  bool _isPriorityMenuOpen = false;
   final ImagePicker _picker = ImagePicker();
   List<String> _attachmentPaths = [];
   List<String> _attachmentUrls = [];
   bool _isUploading = false;
   final NotificationService _notificationService = NotificationService();
+  final GlobalKey _priorityKey = GlobalKey();
 
   @override
   void initState() {
@@ -1426,6 +1435,49 @@ class _TaskDetailState extends State<TaskDetail> {
     return intValue % 100000;
   }
 
+  Color _getPriorityColor(String? priority) {
+    switch (priority?.toLowerCase()) {
+      case 'high':
+        return Colors.red;
+      case 'medium':
+        return Colors.orange;
+      case 'low':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  Future<void> _updatePriority(String priority) async {
+    try {
+      await Supabase.instance.client.from('tasks').update({
+        'priority': priority,
+        'updated_at': DateTime.now().toIso8601String(),
+      }).eq('id', widget.task['id']);
+
+      setState(() {
+        widget.task['priority'] = priority;
+      });
+      widget.onTaskUpdated();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Priority updated successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error updating priority: ${error.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final sortedSubtasks = _getSortedSubtasks();
@@ -1450,7 +1502,7 @@ class _TaskDetailState extends State<TaskDetail> {
                 child: GestureDetector(
                   onTap: () {
                     setState(() {
-                      _isMenuOpen = true;
+                      _isCategoryMenuOpen = true;
                     });
 
                     final RenderBox? button = _categoryKey.currentContext
@@ -1503,7 +1555,7 @@ class _TaskDetailState extends State<TaskDetail> {
                         ],
                       ).then((selectedValue) {
                         setState(() {
-                          _isMenuOpen = false;
+                          _isCategoryMenuOpen = false;
                         });
 
                         if (selectedValue == 'add_category') {
@@ -1541,7 +1593,7 @@ class _TaskDetailState extends State<TaskDetail> {
                         ),
                         SizedBox(width: 5),
                         AnimatedRotation(
-                          turns: _isMenuOpen ? 0.5 : 0,
+                          turns: _isCategoryMenuOpen ? 0.5 : 0,
                           duration: Duration(milliseconds: 200),
                           child: Icon(
                             Icons.keyboard_arrow_down,
@@ -1555,13 +1607,155 @@ class _TaskDetailState extends State<TaskDetail> {
                 ),
               ),
               SizedBox(height: 5),
-              Text(
-                widget.task['title'] ?? '',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 40,
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    widget.task['title'] ?? '',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 40,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () {
+                      setState(() {
+                        _isPriorityMenuOpen = true;
+                      });
+
+                      final RenderBox? button = _priorityKey.currentContext
+                          ?.findRenderObject() as RenderBox?;
+                      if (button != null) {
+                        final position = button.localToGlobal(Offset.zero);
+                        final size = button.size;
+
+                        showMenu(
+                          context: context,
+                          position: RelativeRect.fromLTRB(
+                            position.dx,
+                            position.dy + size.height + 5,
+                            position.dx + size.width,
+                            position.dy,
+                          ),
+                          color: WarnaUtama2,
+                          items: [
+                            PopupMenuItem(
+                              value: 'high',
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 12,
+                                    height: 12,
+                                    decoration: BoxDecoration(
+                                      color: Colors.red,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'High',
+                                    style: TextStyle(color: Colors.white70),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'medium',
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 12,
+                                    height: 12,
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Medium',
+                                    style: TextStyle(color: Colors.white70),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            PopupMenuItem(
+                              value: 'low',
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 12,
+                                    height: 12,
+                                    decoration: BoxDecoration(
+                                      color: Colors.green,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    'Low',
+                                    style: TextStyle(color: Colors.white70),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ).then((value) {
+                          setState(() {
+                            _isPriorityMenuOpen = false;
+                          });
+                          if (value != null) {
+                            _updatePriority(value);
+                          }
+                        });
+                      }
+                    },
+                    child: Container(
+                      key: _priorityKey,
+                      padding:
+                          EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: WarnaSecondary,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 12,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: _getPriorityColor(widget.task['priority']),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            (widget.task['priority']?.toString().capitalize() ??
+                                'Priority'),
+                            style: TextStyle(
+                              color: WarnaUtama2,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(width: 5),
+                          AnimatedRotation(
+                            turns: _isPriorityMenuOpen ? 0.5 : 0,
+                            duration: Duration(milliseconds: 200),
+                            child: Icon(
+                              Icons.keyboard_arrow_down,
+                              color: WarnaUtama2,
+                              size: 20,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
               ),
               SizedBox(height: 5),
               if (subtasks.isNotEmpty)
