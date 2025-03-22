@@ -1416,233 +1416,6 @@ class _TaskDetailState extends State<TaskDetail> {
     }
   }
 
-  // Update UI untuk menampilkan multiple attachments
-  Widget _buildAttachmentsSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Header Attachments dengan Add button
-        ListTile(
-          leading: Icon(
-            Icons.attach_file,
-            color: Colors.white,
-          ),
-          title: Text(
-            'Attachments (${_attachmentUrls.length})',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 16,
-            ),
-          ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (_isUploading)
-                SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(WarnaSecondary),
-                  ),
-                )
-              else
-                Text(
-                  'Add',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                  ),
-                ),
-              Icon(
-                Icons.chevron_right,
-                color: Colors.white,
-              ),
-            ],
-          ),
-          onTap: _handleAttachment,
-        ),
-
-        // Grid Preview Images
-        if (_attachmentUrls.isNotEmpty)
-          Padding(
-            padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final double itemWidth = (constraints.maxWidth - 16) / 3;
-                return Wrap(
-                  spacing: 8, // gap between adjacent items horizontally
-                  runSpacing: 8, // gap between lines
-                  children: List.generate(_attachmentUrls.length, (index) {
-                    return Container(
-                      width: itemWidth,
-                      height: itemWidth,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: Colors.white.withOpacity(0.1),
-                          width: 1,
-                        ),
-                      ),
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          // Image
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              _attachmentUrls[index],
-                              fit: BoxFit.cover,
-                              headers: {
-                                'Authorization':
-                                    'Bearer ${Supabase.instance.client.auth.currentSession?.accessToken}'
-                              },
-                              loadingBuilder:
-                                  (context, child, loadingProgress) {
-                                if (loadingProgress == null) return child;
-                                return Container(
-                                  color: Colors.grey[800],
-                                  child: Center(
-                                    child: CircularProgressIndicator(
-                                      value:
-                                          loadingProgress.expectedTotalBytes !=
-                                                  null
-                                              ? loadingProgress
-                                                      .cumulativeBytesLoaded /
-                                                  loadingProgress
-                                                      .expectedTotalBytes!
-                                              : null,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        WarnaSecondary,
-                                      ),
-                                      strokeWidth: 2,
-                                    ),
-                                  ),
-                                );
-                              },
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  color: Colors.grey[800],
-                                  child: Center(
-                                    child: Column(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: [
-                                        Icon(
-                                          Icons.error_outline,
-                                          color: Colors.white70,
-                                          size: 20,
-                                        ),
-                                        SizedBox(height: 4),
-                                        Text(
-                                          'Error',
-                                          style: TextStyle(
-                                            color: Colors.white70,
-                                            fontSize: 12,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-
-                          // Tap to View Full Image
-                          Positioned.fill(
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                borderRadius: BorderRadius.circular(8),
-                                onTap: () {
-                                  showDialog(
-                                    context: context,
-                                    builder: (BuildContext context) {
-                                      return Dialog(
-                                        backgroundColor: Colors.transparent,
-                                        insetPadding: EdgeInsets.zero,
-                                        child: Stack(
-                                          fit: StackFit.expand,
-                                          children: [
-                                            // Image with InteractiveViewer for zoom and pan
-                                            InteractiveViewer(
-                                              minScale: 0.5,
-                                              maxScale: 4.0,
-                                              child: Image.network(
-                                                _attachmentUrls[index],
-                                                fit: BoxFit.contain,
-                                                headers: {
-                                                  'Authorization':
-                                                      'Bearer ${Supabase.instance.client.auth.currentSession?.accessToken}'
-                                                },
-                                              ),
-                                            ),
-                                            // Close button
-                                            Positioned(
-                                              top: 40,
-                                              right: 20,
-                                              child: Material(
-                                                color: Colors.black
-                                                    .withOpacity(0.5),
-                                                borderRadius:
-                                                    BorderRadius.circular(20),
-                                                child: IconButton(
-                                                  icon: Icon(Icons.close,
-                                                      color: Colors.white),
-                                                  onPressed: () =>
-                                                      Navigator.pop(context),
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      );
-                                    },
-                                  );
-                                },
-                                splashColor: Colors.white.withOpacity(0.1),
-                                highlightColor: Colors.white.withOpacity(0.1),
-                              ),
-                            ),
-                          ),
-
-                          // Delete Button - Pindahkan ke layer paling atas
-                          Positioned(
-                            top: 4,
-                            right: 4,
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: () => _removeAttachment(index),
-                                borderRadius: BorderRadius.circular(12),
-                                child: Container(
-                                  padding: EdgeInsets.all(4),
-                                  decoration: BoxDecoration(
-                                    color: Colors.black.withOpacity(0.6),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Icon(
-                                    Icons.close,
-                                    color: Colors.white,
-                                    size: 14,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-                );
-              },
-            ),
-          ),
-      ],
-    );
-  }
-
   // Update fungsi _getNotificationId
   int _getNotificationId(String uuid) {
     // Mengambil 5 karakter terakhir dari UUID
@@ -2052,7 +1825,262 @@ class _TaskDetailState extends State<TaskDetail> {
                       onTap: () => _editNotes(context),
                     ),
                     Divider(height: 1, color: WarnaUtama.withOpacity(0.3)),
-                    _buildAttachmentsSection(),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Header Attachments dengan Add button
+                        ListTile(
+                          leading: Icon(
+                            Icons.attach_file,
+                            color: Colors.white,
+                          ),
+                          title: Text(
+                            'Attachments (${_attachmentUrls.length})',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                            ),
+                          ),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (_isUploading)
+                                SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                        WarnaSecondary),
+                                  ),
+                                )
+                              else
+                                Text(
+                                  'Add',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              Icon(
+                                Icons.chevron_right,
+                                color: Colors.white,
+                              ),
+                            ],
+                          ),
+                          onTap: _handleAttachment,
+                        ),
+
+                        // Grid Preview Images
+                        if (_attachmentUrls.isNotEmpty)
+                          Padding(
+                            padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
+                            child: LayoutBuilder(
+                              builder: (context, constraints) {
+                                final double itemWidth =
+                                    (constraints.maxWidth - 16) / 3;
+                                return Wrap(
+                                  spacing:
+                                      8, // gap between adjacent items horizontally
+                                  runSpacing: 8, // gap between lines
+                                  children: List.generate(
+                                      _attachmentUrls.length, (index) {
+                                    return Container(
+                                      width: itemWidth,
+                                      height: itemWidth,
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(8),
+                                        border: Border.all(
+                                          color: Colors.white.withOpacity(0.1),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      child: Stack(
+                                        fit: StackFit.expand,
+                                        children: [
+                                          // Image
+                                          ClipRRect(
+                                            borderRadius:
+                                                BorderRadius.circular(8),
+                                            child: Image.network(
+                                              _attachmentUrls[index],
+                                              fit: BoxFit.cover,
+                                              headers: {
+                                                'Authorization':
+                                                    'Bearer ${Supabase.instance.client.auth.currentSession?.accessToken}'
+                                              },
+                                              loadingBuilder: (context, child,
+                                                  loadingProgress) {
+                                                if (loadingProgress == null)
+                                                  return child;
+                                                return Container(
+                                                  color: Colors.grey[800],
+                                                  child: Center(
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                      value: loadingProgress
+                                                                  .expectedTotalBytes !=
+                                                              null
+                                                          ? loadingProgress
+                                                                  .cumulativeBytesLoaded /
+                                                              loadingProgress
+                                                                  .expectedTotalBytes!
+                                                          : null,
+                                                      valueColor:
+                                                          AlwaysStoppedAnimation<
+                                                              Color>(
+                                                        WarnaSecondary,
+                                                      ),
+                                                      strokeWidth: 2,
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                              errorBuilder:
+                                                  (context, error, stackTrace) {
+                                                return Container(
+                                                  color: Colors.grey[800],
+                                                  child: Center(
+                                                    child: Column(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .center,
+                                                      children: [
+                                                        Icon(
+                                                          Icons.error_outline,
+                                                          color: Colors.white70,
+                                                          size: 20,
+                                                        ),
+                                                        SizedBox(height: 4),
+                                                        Text(
+                                                          'Error',
+                                                          style: TextStyle(
+                                                            color:
+                                                                Colors.white70,
+                                                            fontSize: 12,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                );
+                                              },
+                                            ),
+                                          ),
+
+                                          // Tap to View Full Image
+                                          Positioned.fill(
+                                            child: Material(
+                                              color: Colors.transparent,
+                                              child: InkWell(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                                onTap: () {
+                                                  showDialog(
+                                                    context: context,
+                                                    builder:
+                                                        (BuildContext context) {
+                                                      return Dialog(
+                                                        backgroundColor:
+                                                            Colors.transparent,
+                                                        insetPadding:
+                                                            EdgeInsets.zero,
+                                                        child: Stack(
+                                                          fit: StackFit.expand,
+                                                          children: [
+                                                            // Image with InteractiveViewer for zoom and pan
+                                                            InteractiveViewer(
+                                                              minScale: 0.5,
+                                                              maxScale: 4.0,
+                                                              child:
+                                                                  Image.network(
+                                                                _attachmentUrls[
+                                                                    index],
+                                                                fit: BoxFit
+                                                                    .contain,
+                                                                headers: {
+                                                                  'Authorization':
+                                                                      'Bearer ${Supabase.instance.client.auth.currentSession?.accessToken}'
+                                                                },
+                                                              ),
+                                                            ),
+                                                            // Close button
+                                                            Positioned(
+                                                              top: 40,
+                                                              right: 20,
+                                                              child: Material(
+                                                                color: Colors
+                                                                    .black
+                                                                    .withOpacity(
+                                                                        0.5),
+                                                                borderRadius:
+                                                                    BorderRadius
+                                                                        .circular(
+                                                                            20),
+                                                                child:
+                                                                    IconButton(
+                                                                  icon: Icon(
+                                                                      Icons
+                                                                          .close,
+                                                                      color: Colors
+                                                                          .white),
+                                                                  onPressed: () =>
+                                                                      Navigator.pop(
+                                                                          context),
+                                                                ),
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                      );
+                                                    },
+                                                  );
+                                                },
+                                                splashColor: Colors.white
+                                                    .withOpacity(0.1),
+                                                highlightColor: Colors.white
+                                                    .withOpacity(0.1),
+                                              ),
+                                            ),
+                                          ),
+
+                                          // Delete Button - Pindahkan ke layer paling atas
+                                          Positioned(
+                                            top: 4,
+                                            right: 4,
+                                            child: Material(
+                                              color: Colors.transparent,
+                                              child: InkWell(
+                                                onTap: () =>
+                                                    _removeAttachment(index),
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                child: Container(
+                                                  padding: EdgeInsets.all(4),
+                                                  decoration: BoxDecoration(
+                                                    color: Colors.black
+                                                        .withOpacity(0.6),
+                                                    shape: BoxShape.circle,
+                                                  ),
+                                                  child: Icon(
+                                                    Icons.close,
+                                                    color: Colors.white,
+                                                    size: 14,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }),
+                                );
+                              },
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ),
