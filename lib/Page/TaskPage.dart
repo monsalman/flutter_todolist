@@ -288,111 +288,116 @@ class _TaskPageState extends State<TaskPage> {
             isScrollControlled: true,
             backgroundColor: Colors.transparent,
             builder: (BuildContext context) {
-              return Container(
-                height: MediaQuery.of(context).size.height * 0.3,
-                decoration: BoxDecoration(
-                  color: WarnaUtama,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(20),
-                    topRight: Radius.circular(20),
-                  ),
-                ),
-                padding: EdgeInsets.only(left: 16, right: 16, top: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Form(
-                      key: _formKey,
-                      child: Column(
-                        children: [
-                          TextFormField(
-                            controller: _taskController,
-                            cursorColor: WarnaSecondary,
-                            autofocus: true,
-                            style: TextStyle(
-                              color: WarnaSecondary,
-                              fontSize: 16,
-                            ),
-                            decoration: InputDecoration(
-                              labelText: 'Add New Task',
-                              labelStyle: TextStyle(
-                                color: WarnaSecondary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(15),
-                                borderSide: BorderSide(color: WarnaSecondary),
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(15),
-                                borderSide: BorderSide(
-                                    color: WarnaSecondary, width: 0.5),
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(15),
-                                borderSide:
-                                    BorderSide(color: WarnaSecondary, width: 1),
-                              ),
-                              filled: true,
-                              fillColor: WarnaUtama,
-                              prefixIcon:
-                                  Icon(Icons.task_alt, color: WarnaSecondary),
-                            ),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return 'Please enter a task';
-                              }
-                              return null;
-                            },
-                          ),
-                          SizedBox(height: 24),
-                          Container(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(15),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: WarnaSecondary.withOpacity(0.3),
-                                  spreadRadius: 1,
-                                  blurRadius: 5,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: ElevatedButton(
-                              onPressed: () async {
-                                if (_formKey.currentState!.validate()) {
-                                  final taskTitle = _taskController.text.trim();
-                                  final category = selectedCategory == 'All'
-                                      ? null
-                                      : selectedCategory;
-
-                                  await _saveTask(taskTitle, category);
-                                  _taskController.clear();
-                                  Navigator.pop(context);
-                                }
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: WarnaSecondary,
-                                minimumSize: Size(double.infinity, 50),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(15),
-                                ),
-                                elevation: 0,
-                              ),
-                              child: Text(
-                                'Add Task',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                  color: WarnaUtama,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+              return Padding(
+                padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).viewInsets.bottom),
+                child: Container(
+                  height: MediaQuery.of(context).size.height * 0.3,
+                  decoration: BoxDecoration(
+                    color: WarnaUtama,
+                    borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(20),
+                      topRight: Radius.circular(20),
                     ),
-                  ],
+                  ),
+                  padding: EdgeInsets.only(left: 16, right: 16, top: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Form(
+                        key: _formKey,
+                        child: Column(
+                          children: [
+                            TextFormField(
+                              controller: _taskController,
+                              cursorColor: WarnaSecondary,
+                              autofocus: true,
+                              style: TextStyle(
+                                color: WarnaSecondary,
+                                fontSize: 16,
+                              ),
+                              decoration: InputDecoration(
+                                labelText: 'Add New Task',
+                                labelStyle: TextStyle(
+                                  color: WarnaSecondary,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  borderSide: BorderSide(color: WarnaSecondary),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  borderSide: BorderSide(
+                                      color: WarnaSecondary, width: 0.5),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                  borderSide: BorderSide(
+                                      color: WarnaSecondary, width: 1),
+                                ),
+                                filled: true,
+                                fillColor: WarnaUtama,
+                                prefixIcon:
+                                    Icon(Icons.task_alt, color: WarnaSecondary),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Please enter a task';
+                                }
+                                return null;
+                              },
+                            ),
+                            SizedBox(height: 24),
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(15),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: WarnaSecondary.withOpacity(0.3),
+                                    spreadRadius: 1,
+                                    blurRadius: 5,
+                                    offset: Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: ElevatedButton(
+                                onPressed: () async {
+                                  if (_formKey.currentState!.validate()) {
+                                    final taskTitle =
+                                        _taskController.text.trim();
+                                    final category = selectedCategory == 'All'
+                                        ? null
+                                        : selectedCategory;
+
+                                    await _saveTask(taskTitle, category);
+                                    _taskController.clear();
+                                    Navigator.pop(context);
+                                  }
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: WarnaSecondary,
+                                  minimumSize: Size(double.infinity, 50),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(15),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                child: Text(
+                                  'Add Task',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: WarnaUtama,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
