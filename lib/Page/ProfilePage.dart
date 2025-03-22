@@ -52,7 +52,7 @@ class _ProfilePageState extends State<ProfilePage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading profile: ${error.toString()}'),
+            content: Text('No Internet Connection'),
             backgroundColor: Colors.red,
           ),
         );
