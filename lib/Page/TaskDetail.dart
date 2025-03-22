@@ -1584,10 +1584,119 @@ class _TaskDetailState extends State<TaskDetail> {
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: EdgeInsets.only(top: 40, left: 16, right: 16, bottom: 24),
+          padding: EdgeInsets.only(top: 16, left: 16, right: 16, bottom: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Center(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _isMenuOpen = true;
+                    });
+
+                    final RenderBox? button = _categoryKey.currentContext
+                        ?.findRenderObject() as RenderBox?;
+                    if (button != null) {
+                      final position = button.localToGlobal(Offset.zero);
+                      final size = button.size;
+
+                      showMenu(
+                        context: context,
+                        position: RelativeRect.fromLTRB(
+                          MediaQuery.of(context).size.width / 2 -
+                              size.width / 1.8,
+                          position.dy + 40,
+                          MediaQuery.of(context).size.width / 2 +
+                              size.width / 2,
+                          position.dy,
+                        ),
+                        color: WarnaUtama2,
+                        items: [
+                          ...categories.map(
+                            (category) => PopupMenuItem(
+                              value: category,
+                              child: Text(
+                                category,
+                                style: TextStyle(color: Colors.white70),
+                              ),
+                            ),
+                          ),
+                          PopupMenuItem(
+                            value: 'add_category',
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.add,
+                                  color: WarnaSecondary,
+                                  size: 20,
+                                ),
+                                SizedBox(width: 8),
+                                Text(
+                                  'Add Category',
+                                  style: TextStyle(
+                                    color: WarnaSecondary,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ).then((selectedValue) {
+                        setState(() {
+                          _isMenuOpen = false;
+                        });
+
+                        if (selectedValue == 'add_category') {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => NavBar(
+                                initialIndex: 2,
+                                expandCategories: true,
+                              ),
+                            ),
+                          );
+                        } else if (selectedValue != null) {
+                          _updateCategory(selectedValue);
+                        }
+                      });
+                    }
+                  },
+                  child: Container(
+                    key: _categoryKey,
+                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: WarnaSecondary,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          widget.task['category'] ?? 'No Category',
+                          style: TextStyle(
+                              color: WarnaUtama2,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(width: 5),
+                        AnimatedRotation(
+                          turns: _isMenuOpen ? 0.5 : 0,
+                          duration: Duration(milliseconds: 200),
+                          child: Icon(
+                            Icons.keyboard_arrow_down,
+                            color: WarnaUtama2,
+                            size: 20,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              SizedBox(height: 5),
               Text(
                 widget.task['title'] ?? '',
                 style: TextStyle(
@@ -1860,119 +1969,6 @@ class _TaskDetailState extends State<TaskDetail> {
                     Divider(height: 1, color: WarnaUtama.withOpacity(0.3)),
                     _buildAttachmentsSection(),
                   ],
-                ),
-              ),
-
-              Text(
-                'Category:',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 14,
-                ),
-              ),
-              SizedBox(height: 4),
-              GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _isMenuOpen = true;
-                  });
-
-                  final RenderBox? button = _categoryKey.currentContext
-                      ?.findRenderObject() as RenderBox?;
-                  if (button != null) {
-                    final position = button.localToGlobal(Offset.zero);
-                    final size = button.size;
-
-                    showMenu(
-                      context: context,
-                      position: RelativeRect.fromLTRB(
-                        position.dx,
-                        position.dy + 40,
-                        position.dx + size.width,
-                        position.dy,
-                      ),
-                      color: WarnaUtama2,
-                      items: [
-                        ...categories.map(
-                          (category) => PopupMenuItem(
-                            value: category,
-                            child: Text(
-                              category,
-                              style: TextStyle(color: Colors.white70),
-                            ),
-                          ),
-                        ),
-                        PopupMenuItem(
-                          value: 'add_category',
-                          child: Row(
-                            children: [
-                              Icon(
-                                Icons.add,
-                                color: WarnaSecondary,
-                                size: 20,
-                              ),
-                              SizedBox(width: 8),
-                              Text(
-                                'Add Category',
-                                style: TextStyle(
-                                  color: WarnaSecondary,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ).then((selectedValue) {
-                      setState(() {
-                        _isMenuOpen = false;
-                      });
-
-                      if (selectedValue == 'add_category') {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => NavBar(
-                              initialIndex: 2,
-                              expandCategories: true,
-                            ),
-                          ),
-                        );
-                      } else if (selectedValue != null) {
-                        _updateCategory(selectedValue);
-                      }
-                    });
-                  }
-                },
-                child: Container(
-                  key: _categoryKey,
-                  padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: WarnaUtama2,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        widget.task['category'] ?? 'No Category',
-                        style: TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
-                      ),
-                      SizedBox(width: 5),
-                      AnimatedRotation(
-                        turns: _isMenuOpen ? 0.5 : 0,
-                        duration: Duration(milliseconds: 200),
-                        child: Icon(
-                          Icons.keyboard_arrow_down,
-                          color: Colors.white70,
-                          size: 20,
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               ),
             ],
