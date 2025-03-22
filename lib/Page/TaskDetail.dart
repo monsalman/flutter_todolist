@@ -1148,14 +1148,99 @@ class _TaskDetailState extends State<TaskDetail> {
 
   // Update method handle attachment
   Future<void> _handleAttachment() async {
-    final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
-    if (image == null) return;
+    // Tampilkan dialog di tengah layar untuk memilih sumber
+    final source = await showDialog<ImageSource>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width:
+                MediaQuery.of(context).size.width * 0.8, // 80% dari lebar layar
+            decoration: BoxDecoration(
+              color: WarnaUtama2,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'Choose Image Source',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                // Gallery option
+                ListTile(
+                  leading: Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: WarnaUtama.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.photo_library, color: WarnaSecondary),
+                  ),
+                  title: Text(
+                    'Choose from Gallery',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  onTap: () => Navigator.pop(context, ImageSource.gallery),
+                ),
 
-    setState(() {
-      _isUploading = true;
-    });
+                // Camera option
+                ListTile(
+                  leading: Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: WarnaUtama.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.camera_alt, color: WarnaSecondary),
+                  ),
+                  title: Text(
+                    'Take a Photo',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  onTap: () => Navigator.pop(context, ImageSource.camera),
+                ),
+
+                // Cancel button
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(
+                        color: WarnaSecondary,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (source == null) return;
 
     try {
+      final XFile? image = await _picker.pickImage(source: source);
+      if (image == null) return;
+
+      setState(() {
+        _isUploading = true;
+      });
+
       final User? user = Supabase.instance.client.auth.currentUser;
       if (user == null) throw Exception('User not authenticated');
 
@@ -1701,11 +1786,11 @@ class _TaskDetailState extends State<TaskDetail> {
                 widget.task['title'] ?? '',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 30,
+                  fontSize: 40,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              SizedBox(height: 15),
+              SizedBox(height: 5),
               if (subtasks.isNotEmpty)
                 Text(
                   'Subtasks:',
