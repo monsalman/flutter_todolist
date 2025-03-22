@@ -93,7 +93,7 @@ class _TaskDetailState extends State<TaskDetail> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error loading categories: ${error.toString()}'),
+            content: Text('No Internet Connection'),
             backgroundColor: Colors.red,
           ),
         );
