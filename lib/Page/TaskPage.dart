@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../Navbar/NavBar.dart';
 import '../main.dart';
+import '../Service/NotificationService.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'TaskDetail.dart';
 import 'package:intl/intl.dart';
@@ -182,7 +183,8 @@ class _TaskPageState extends State<TaskPage> {
             ? '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}'
             : null;
 
-        await Supabase.instance.client.from('tasks').insert({
+        // Buat task tanpa ID (Supabase akan generate UUID secara otomatis)
+        final response = await Supabase.instance.client.from('tasks').insert({
           'title': taskTitle,
           'category': category,
           'user_id': user.id,
@@ -190,7 +192,47 @@ class _TaskPageState extends State<TaskPage> {
           'created_at': DateTime.now().toIso8601String(),
           'due_date': taskDate.toIso8601String(),
           'time': timeString,
-        });
+        }).select();
+
+        final taskId = response[0]['id'];
+
+        // Schedule notification jika ada due date dan time
+        if (timeString != null) {
+          final scheduledDate = DateTime(
+            taskDate.year,
+            taskDate.month,
+            taskDate.day,
+            selectedTime!.hour,
+            selectedTime!.minute,
+          );
+
+          if (scheduledDate.isAfter(DateTime.now())) {
+            try {
+              // Buat instance NotificationService
+              final notificationService = NotificationService();
+
+              // Generate notification ID
+              final notificationId = _getNotificationId(taskId);
+
+              // Cancel notifikasi yang sudah ada dengan ID yang sama (jika ada)
+              await notificationService.cancelNotification(notificationId);
+
+              // Schedule notifikasi baru
+              await notificationService.scheduleTaskNotification(
+                id: notificationId,
+                title: taskTitle,
+                scheduledDate: scheduledDate,
+              );
+
+              print(
+                  'Notification scheduled for $scheduledDate with ID: $notificationId');
+            } catch (e) {
+              print('Error scheduling notification: $e');
+            }
+          } else {
+            print('Scheduled date is in the past: $scheduledDate');
+          }
+        }
 
         await _loadTasks();
 
@@ -212,6 +254,20 @@ class _TaskPageState extends State<TaskPage> {
           ),
         );
       }
+    }
+  }
+
+  // Perbaikan method _getNotificationId
+  int _getNotificationId(String taskId) {
+    try {
+      // Ambil 6 karakter terakhir dari UUID dan konversi ke hexadecimal
+      final lastChars = taskId.substring(taskId.length - 6);
+      final intValue = int.parse(lastChars, radix: 16);
+      // Pastikan nilai tidak melebihi batas maksimum notification ID
+      return intValue % 100000;
+    } catch (e) {
+      // Fallback jika parsing gagal
+      return DateTime.now().millisecondsSinceEpoch % 100000;
     }
   }
 
