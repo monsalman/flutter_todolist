@@ -4,6 +4,7 @@ import '../main.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'TaskDetail.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
 
 class TaskPage extends StatefulWidget {
   const TaskPage({super.key});
@@ -25,16 +26,26 @@ class _TaskPageState extends State<TaskPage> {
   bool isCompletedExpanded = true;
   DateTime? selectedDate;
   TimeOfDay? selectedTime;
+  Timer? _timer;
 
   @override
   void initState() {
     super.initState();
     _loadCategories();
     _loadTasks();
+
+    _timer = Timer.periodic(Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          // Trigger rebuild untuk memperbarui tampilan
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _timer?.cancel();
     _taskController.dispose();
     super.dispose();
   }
