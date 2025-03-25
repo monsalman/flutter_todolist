@@ -1609,13 +1609,16 @@ class _TaskDetailState extends State<TaskDetail> {
               SizedBox(height: 5),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
-                  Text(
-                    widget.task['title'] ?? '',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 40,
-                      fontWeight: FontWeight.bold,
+                  Flexible(
+                    child: Text(
+                      widget.task['title'] ?? '',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 40,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   SizedBox(width: 8),

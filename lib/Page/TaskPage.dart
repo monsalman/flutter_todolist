@@ -14,7 +14,7 @@ class TaskPage extends StatefulWidget {
   State<TaskPage> createState() => _TaskPageState();
 }
 
-class _TaskPageState extends State<TaskPage> {
+class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
   List<String> categories = [];
   String? selectedCategory;
   String selectedTimeFilter = 'Today';
