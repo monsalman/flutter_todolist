@@ -1336,6 +1336,20 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
         : (isTimeOverdue ? Colors.redAccent : Colors.white70);
     final Color checkboxColor = isCompleted ? Colors.white38 : WarnaSecondary;
 
+    // Tambahkan fungsi untuk mendapatkan warna prioritas
+    Color _getPriorityColor(String? priority) {
+      switch (priority?.toLowerCase()) {
+        case 'high':
+          return Colors.red;
+        case 'medium':
+          return Colors.orange;
+        case 'low':
+          return Colors.green;
+        default:
+          return Colors.transparent;
+      }
+    }
+
     return Card(
       margin: EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
@@ -1438,6 +1452,19 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                 if (task['time'] != null) SizedBox(width: 8),
                 Row(
                   children: [
+                    // Tambahkan dot prioritas jika ada
+                    if (task['priority'] != null)
+                      Padding(
+                        padding: EdgeInsets.only(right: 4),
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: _getPriorityColor(task['priority']),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
                     if (task['subtasks'] != null &&
                         (task['subtasks'] as List).isNotEmpty)
                       Padding(
