@@ -1434,6 +1434,39 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                     ),
                   ],
                 ],
+                // Tambahkan indikator ikon
+                if (task['time'] != null) SizedBox(width: 8),
+                Row(
+                  children: [
+                    if (task['subtasks'] != null &&
+                        (task['subtasks'] as List).isNotEmpty)
+                      Padding(
+                        padding: EdgeInsets.only(right: 4),
+                        child: Icon(
+                          Icons.checklist,
+                          color: dateTimeColor,
+                          size: 14,
+                        ),
+                      ),
+                    if (task['notes'] != null &&
+                        task['notes'].toString().isNotEmpty)
+                      Padding(
+                        padding: EdgeInsets.only(right: 4),
+                        child: Icon(
+                          Icons.sticky_note_2,
+                          color: dateTimeColor,
+                          size: 14,
+                        ),
+                      ),
+                    if (task['attachments'] != null &&
+                        (task['attachments'] as List).isNotEmpty)
+                      Icon(
+                        Icons.attach_file,
+                        color: dateTimeColor,
+                        size: 14,
+                      ),
+                  ],
+                ),
               ],
             ),
           ],

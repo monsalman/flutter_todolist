@@ -1971,7 +1971,7 @@ class _TaskDetailState extends State<TaskDetail> {
                   children: [
                     ListTile(
                       leading: Icon(
-                        Icons.note,
+                        Icons.sticky_note_2,
                         color: Colors.white,
                       ),
                       title: Column(
