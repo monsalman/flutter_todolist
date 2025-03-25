@@ -45,7 +45,7 @@ class _NavBarState extends State<NavBar> {
       body: _pages(widget.expandCategories)[_selectedIndex],
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
-          color: Color(0xFF4E4062),
+          color: WarnaUtama2,
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1),
@@ -58,15 +58,24 @@ class _NavBarState extends State<NavBar> {
           child: BottomNavigationBar(
             items: <BottomNavigationBarItem>[
               BottomNavigationBarItem(
-                icon: Icon(Icons.calendar_today),
+                icon: Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Icon(Icons.calendar_today),
+                ),
                 label: 'Kalender',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.assignment),
+                icon: Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Icon(Icons.assignment),
+                ),
                 label: 'Tugas',
               ),
               BottomNavigationBarItem(
-                icon: Icon(Icons.person),
+                icon: Padding(
+                  padding: EdgeInsets.only(top: 8),
+                  child: Icon(Icons.person),
+                ),
                 label: 'Profile',
               ),
             ],
