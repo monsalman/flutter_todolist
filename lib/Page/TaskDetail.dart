@@ -1322,8 +1322,8 @@ class _TaskDetailState extends State<TaskDetail> {
               children: [
                 Icon(
                   Icons.warning_amber_rounded,
-                  color: Colors.amber,
-                  size: 48,
+                  color: WarnaSecondary,
+                  size: 55,
                 ),
                 SizedBox(height: 16),
                 Text(
@@ -1359,8 +1359,8 @@ class _TaskDetailState extends State<TaskDetail> {
                     ),
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.red,
-                        foregroundColor: Colors.white,
+                        backgroundColor: WarnaSecondary,
+                        foregroundColor: WarnaUtama2,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(8),
                         ),
