@@ -91,7 +91,7 @@ class NotificationService {
       await flutterLocalNotificationsPlugin.zonedSchedule(
         id,
         'Task Reminder',
-        'Due: $title',
+        'Due Task: $title',
         scheduledTime,
         NotificationDetails(
           android: AndroidNotificationDetails(
