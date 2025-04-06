@@ -29,6 +29,8 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
   TimeOfDay? selectedTime;
   Timer? _timer;
   final Duration _animationDuration = Duration(milliseconds: 300);
+  final GlobalKey<State> _categoryKey = GlobalKey<State>();
+  bool _isCategoryMenuOpen = false;
 
   @override
   void initState() {
@@ -1239,70 +1241,219 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.start,
                                   children: [
-                                    // Date section
-                                    Row(
-                                      children: [
-                                        IconButton(
-                                          onPressed: () async {
-                                            final result =
-                                                await _selectDate(context);
-                                            if (result != null) {
+                                    // Category section
+                                    Container(
+                                      key: _categoryKey,
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: WarnaUtama2,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            _isCategoryMenuOpen = true;
+                                          });
+
+                                          final RenderBox? button = _categoryKey
+                                                  .currentContext
+                                                  ?.findRenderObject()
+                                              as RenderBox?;
+                                          if (button != null) {
+                                            final position = button
+                                                .localToGlobal(Offset.zero);
+                                            final size = button.size;
+
+                                            showMenu(
+                                              context: context,
+                                              position: RelativeRect.fromLTRB(
+                                                position.dx,
+                                                position.dy -
+                                                    (categories.length + 1) *
+                                                        55.0,
+                                                position.dx + size.width,
+                                                position.dy,
+                                              ),
+                                              color: WarnaUtama2,
+                                              items: [
+                                                ...categories.map(
+                                                  (category) => PopupMenuItem(
+                                                    value: category,
+                                                    child: Text(
+                                                      category,
+                                                      style: TextStyle(
+                                                          color:
+                                                              Colors.white70),
+                                                    ),
+                                                  ),
+                                                ),
+                                                PopupMenuItem(
+                                                  value: 'add_category',
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(
+                                                        Icons.add,
+                                                        color: WarnaSecondary,
+                                                        size: 20,
+                                                      ),
+                                                      SizedBox(width: 8),
+                                                      Text(
+                                                        'Add Category',
+                                                        style: TextStyle(
+                                                          color: WarnaSecondary,
+                                                          fontSize: 14,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ).then((selectedValue) {
                                               setModalState(() {
-                                                selectedDate = result;
+                                                _isCategoryMenuOpen = false;
                                               });
-                                            }
-                                          },
-                                          icon: Icon(
-                                            Icons.calendar_today,
-                                            color: WarnaSecondary,
-                                            size: 24,
-                                          ),
-                                        ),
-                                        if (selectedDate != null)
-                                          Text(
-                                            DateFormat('dd MMM')
-                                                .format(selectedDate!),
-                                            style: TextStyle(
-                                              color: WarnaSecondary,
-                                              fontSize: 16,
+
+                                              if (selectedValue ==
+                                                  'add_category') {
+                                                Navigator.pushReplacement(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        NavBar(
+                                                      initialIndex: 2,
+                                                      expandCategories: true,
+                                                    ),
+                                                  ),
+                                                );
+                                              } else if (selectedValue !=
+                                                  null) {
+                                                setModalState(() {
+                                                  selectedCategory =
+                                                      selectedValue;
+                                                });
+                                              }
+                                            });
+                                          }
+                                        },
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              selectedCategory ?? 'No Category',
+                                              style: TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 14,
+                                              ),
                                             ),
-                                          ),
-                                      ],
+                                            SizedBox(width: 2),
+                                            AnimatedRotation(
+                                              turns:
+                                                  _isCategoryMenuOpen ? 0.5 : 0,
+                                              duration:
+                                                  Duration(milliseconds: 200),
+                                              child: Icon(
+                                                Icons.keyboard_arrow_down,
+                                                color: Colors.white70,
+                                                size: 20,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
-                                    // Time section
-                                    Row(
-                                      children: [
-                                        IconButton(
-                                          onPressed: () async {
-                                            final result =
-                                                await _selectTime(context);
-                                            if (result != null &&
-                                                result != 'cancel') {
-                                              setModalState(() {
-                                                if (result == 'no_time') {
-                                                  selectedTime = null;
-                                                } else if (result
-                                                    is TimeOfDay) {
-                                                  selectedTime = result;
+                                    // Date and Time section in a tight row
+                                    Padding(
+                                      padding: EdgeInsets.only(left: 8),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          // Date button
+                                          SizedBox(
+                                            width: 32,
+                                            child: IconButton(
+                                              padding: EdgeInsets.zero,
+                                              constraints: BoxConstraints(
+                                                minWidth: 32,
+                                                maxWidth: 32,
+                                                minHeight: 32,
+                                                maxHeight: 32,
+                                              ),
+                                              onPressed: () async {
+                                                final result =
+                                                    await _selectDate(context);
+                                                if (result != null) {
+                                                  setModalState(() {
+                                                    selectedDate = result;
+                                                  });
                                                 }
-                                              });
-                                            }
-                                          },
-                                          icon: Icon(
-                                            Icons.access_time,
-                                            color: WarnaSecondary,
-                                            size: 24,
-                                          ),
-                                        ),
-                                        if (selectedTime != null)
-                                          Text(
-                                            selectedTime!.format(context),
-                                            style: TextStyle(
-                                              color: WarnaSecondary,
-                                              fontSize: 16,
+                                              },
+                                              icon: Icon(
+                                                Icons.calendar_today,
+                                                color: WarnaSecondary,
+                                                size: 28,
+                                              ),
                                             ),
                                           ),
-                                      ],
+                                          if (selectedDate != null)
+                                            Padding(
+                                              padding: EdgeInsets.only(left: 5),
+                                              child: Text(
+                                                DateFormat('dd MMM')
+                                                    .format(selectedDate!),
+                                                style: TextStyle(
+                                                  color: WarnaSecondary,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ),
+                                          SizedBox(width: 5),
+                                          // Time button
+                                          SizedBox(
+                                            width: 32,
+                                            child: IconButton(
+                                              padding: EdgeInsets.zero,
+                                              constraints: BoxConstraints(
+                                                minWidth: 32,
+                                                maxWidth: 32,
+                                                minHeight: 32,
+                                                maxHeight: 32,
+                                              ),
+                                              onPressed: () async {
+                                                final result =
+                                                    await _selectTime(context);
+                                                if (result != null &&
+                                                    result != 'cancel') {
+                                                  setModalState(() {
+                                                    if (result == 'no_time') {
+                                                      selectedTime = null;
+                                                    } else if (result
+                                                        is TimeOfDay) {
+                                                      selectedTime = result;
+                                                    }
+                                                  });
+                                                }
+                                              },
+                                              icon: Icon(
+                                                Icons.access_time,
+                                                color: WarnaSecondary,
+                                                size: 28,
+                                              ),
+                                            ),
+                                          ),
+                                          if (selectedTime != null)
+                                            Padding(
+                                              padding: EdgeInsets.only(left: 4),
+                                              child: Text(
+                                                selectedTime!.format(context),
+                                                style: TextStyle(
+                                                  color: WarnaSecondary,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
