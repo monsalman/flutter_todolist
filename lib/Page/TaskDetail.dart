@@ -1735,15 +1735,15 @@ class _TaskDetailState extends State<TaskDetail> {
                             ),
                           ),
                           SizedBox(width: 8),
-                          Text(
-                            (widget.task['priority']?.toString().capitalize() ??
-                                'Priority'),
-                            style: TextStyle(
-                              color: WarnaUtama2,
-                              fontSize: 14,
-                              fontWeight: FontWeight.bold,
+                          if (widget.task['priority'] == null)
+                            Text(
+                              'Priority',
+                              style: TextStyle(
+                                color: WarnaUtama2,
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
-                          ),
                           SizedBox(width: 5),
                           AnimatedRotation(
                             turns: _isPriorityMenuOpen ? 0.5 : 0,
