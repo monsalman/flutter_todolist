@@ -1419,40 +1419,43 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
             SizedBox(height: 4),
             Row(
               children: [
-                if (task['time'] != null) ...[
-                  Text(
-                    '${task['time']}'.substring(0, 5),
-                    style: TextStyle(
-                      color: dateTimeColor,
-                      fontSize: 12,
-                    ),
-                  ),
-                  if (!isToday && task['due_date'] != null) ...[
-                    SizedBox(width: 5),
-                    Text(
-                      '${DateTime.parse(task['due_date']).toLocal().toString().substring(8, 10)}-${DateTime.parse(task['due_date']).toLocal().toString().substring(5, 7)}',
-                      style: TextStyle(
-                        color: dateTimeColor,
-                        fontSize: 12,
+                // Grup waktu, tanggal, dan status keterlambatan
+                Wrap(
+                  spacing: 5, // Spacing antar elemen
+                  children: [
+                    // Tampilkan waktu jika ada
+                    if (task['time'] != null)
+                      Text(
+                        '${task['time']}'.substring(0, 5),
+                        style: TextStyle(
+                          color: dateTimeColor,
+                          fontSize: 12,
+                        ),
                       ),
-                    ),
-                  ],
-                  if (isTimeOverdue && !isCompleted) ...[
-                    SizedBox(width: 5),
-                    Text(
-                      _getOverdueText(task),
-                      style: TextStyle(
-                        color: Colors.redAccent,
-                        fontSize: 12,
+                    // Tampilkan tanggal untuk semua task yang bukan today
+                    if (!isToday && task['due_date'] != null)
+                      Text(
+                        '${DateTime.parse(task['due_date']).toLocal().toString().substring(8, 10)}-${DateTime.parse(task['due_date']).toLocal().toString().substring(5, 7)}',
+                        style: TextStyle(
+                          color: dateTimeColor,
+                          fontSize: 12,
+                        ),
                       ),
-                    ),
+                    // Tampilkan keterlambatan untuk semua task yang overdue
+                    if (isTimeOverdue && !isCompleted)
+                      Text(
+                        _getOverdueText(task),
+                        style: TextStyle(
+                          color: Colors.redAccent,
+                          fontSize: 12,
+                        ),
+                      ),
                   ],
-                ],
-                // Tambahkan indikator ikon
-                if (task['time'] != null) SizedBox(width: 8),
+                ),
+                SizedBox(width: 8),
+                // Icon indicators
                 Row(
                   children: [
-                    // Tambahkan dot prioritas jika ada
                     if (task['priority'] != null)
                       Padding(
                         padding: EdgeInsets.only(right: 4),
@@ -1503,9 +1506,11 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
   }
 
   String _getOverdueText(Map<String, dynamic> task) {
+    final now = DateTime.now();
+    final taskDate = DateTime.parse(task['due_date']).toLocal();
+
     if (task['time'] != null) {
-      final now = DateTime.now();
-      final taskDate = DateTime.parse(task['due_date']).toLocal();
+      // Jika ada waktu spesifik
       final timeparts = task['time'].split(':');
       final taskDateTime = DateTime(
         taskDate.year,
@@ -1514,7 +1519,6 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
         int.parse(timeparts[0]),
         int.parse(timeparts[1]),
       );
-
       final difference = now.difference(taskDateTime);
       if (difference.inDays > 0) {
         return "(${difference.inDays}d late)";
@@ -1522,6 +1526,14 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
         return "(${difference.inHours}h late)";
       } else if (difference.inMinutes > 0) {
         return "(${difference.inMinutes}m late)";
+      }
+    } else {
+      // Jika hanya ada tanggal (tanpa waktu)
+      final taskDay = DateTime(taskDate.year, taskDate.month, taskDate.day);
+      final today = DateTime(now.year, now.month, now.day);
+      final difference = today.difference(taskDay);
+      if (difference.inDays > 0) {
+        return "(${difference.inDays}d late)";
       }
     }
     return "";
