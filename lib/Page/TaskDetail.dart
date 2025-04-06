@@ -548,6 +548,7 @@ class _TaskDetailState extends State<TaskDetail> {
               isCurrentMonth: false,
               isSelected: false,
               onTap: () {},
+              currentMonth: DateTime(currentMonth.year, currentMonth.month - 1),
             ),
           );
         } else if (day > daysInMonth) {
@@ -559,6 +560,7 @@ class _TaskDetailState extends State<TaskDetail> {
               isCurrentMonth: false,
               isSelected: false,
               onTap: () {},
+              currentMonth: DateTime(currentMonth.year, currentMonth.month + 1),
             ),
           );
         } else {
@@ -574,6 +576,7 @@ class _TaskDetailState extends State<TaskDetail> {
               isCurrentMonth: true,
               isSelected: isSelected,
               onTap: () => onSelectDate(date),
+              currentMonth: currentMonth,
             ),
           );
         }
@@ -597,7 +600,14 @@ class _TaskDetailState extends State<TaskDetail> {
     required bool isCurrentMonth,
     required bool isSelected,
     required VoidCallback onTap,
+    required DateTime currentMonth,
   }) {
+    // Tambahkan pengecekan untuk hari ini
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final currentDate = DateTime(currentMonth.year, currentMonth.month, day);
+    final isToday = today.isAtSameMomentAs(currentDate) && isCurrentMonth;
+
     return Expanded(
       child: AspectRatio(
         aspectRatio: 1,
@@ -608,6 +618,9 @@ class _TaskDetailState extends State<TaskDetail> {
             decoration: BoxDecoration(
               color: isSelected ? WarnaSecondary : Colors.transparent,
               shape: BoxShape.circle,
+              border: isToday && !isSelected
+                  ? Border.all(color: WarnaSecondary, width: 2)
+                  : null,
             ),
             child: Center(
               child: Text(
@@ -619,7 +632,9 @@ class _TaskDetailState extends State<TaskDetail> {
                           : Colors.white
                       : Colors.white.withOpacity(0.3),
                   fontSize: 16,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontWeight: isSelected || isToday
+                      ? FontWeight.bold
+                      : FontWeight.normal,
                 ),
               ),
             ),
@@ -918,54 +933,69 @@ class _TaskDetailState extends State<TaskDetail> {
         color: WarnaUtama,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Stack(
-        children: [
-          // Spinner values
-          ListWheelScrollView.useDelegate(
-            itemExtent: 50,
-            perspective: 0.005,
-            diameterRatio: 1.5,
-            physics: FixedExtentScrollPhysics(),
-            onSelectedItemChanged: (index) {
-              onChanged(index + minValue);
-            },
-            controller:
-                FixedExtentScrollController(initialItem: value - minValue),
-            childDelegate: ListWheelChildBuilderDelegate(
-              childCount: maxValue - minValue + 1,
-              builder: (context, index) {
-                final itemValue = index + minValue;
-                return Center(
-                  child: Text(
-                    format(itemValue),
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: itemValue == value
-                          ? FontWeight.bold
-                          : FontWeight.normal,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-
-          // Highlight overlay for selected value
-          Center(
-            child: Container(
-              height: 50,
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(
-                      color: WarnaSecondary.withOpacity(0.5), width: 2),
-                  bottom: BorderSide(
-                      color: WarnaSecondary.withOpacity(0.5), width: 2),
-                ),
+      child: ShaderMask(
+        shaderCallback: (Rect bounds) {
+          return LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              WarnaUtama,
+              Colors.transparent,
+              Colors.transparent,
+              WarnaUtama,
+            ],
+            stops: [0.0, 0.15, 0.85, 1.0],
+          ).createShader(bounds);
+        },
+        blendMode: BlendMode.dstOut,
+        child: Stack(
+          children: [
+            // Divider lines with increased thickness
+            Positioned.fill(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                      height: 2, color: WarnaSecondary), // Increased thickness
+                  SizedBox(height: 48),
+                  Container(
+                      height: 2, color: WarnaSecondary), // Increased thickness
+                ],
               ),
             ),
-          ),
-        ],
+            // Scrollable list
+            ListWheelScrollView(
+              controller:
+                  FixedExtentScrollController(initialItem: value - minValue),
+              physics: FixedExtentScrollPhysics(),
+              itemExtent: 50,
+              perspective: 0.005,
+              diameterRatio: 1.2,
+              squeeze: 1.0,
+              onSelectedItemChanged: (index) => onChanged(index + minValue),
+              children: List<Widget>.generate(
+                maxValue - minValue + 1,
+                (index) {
+                  final itemValue = index + minValue;
+                  return Container(
+                    height: 50,
+                    alignment: Alignment.center,
+                    child: Text(
+                      format(itemValue),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: itemValue == value
+                            ? FontWeight.bold
+                            : FontWeight.normal,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
