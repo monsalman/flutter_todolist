@@ -28,6 +28,7 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
   DateTime? selectedDate;
   TimeOfDay? selectedTime;
   Timer? _timer;
+  final Duration _animationDuration = Duration(milliseconds: 300);
 
   @override
   void initState() {
@@ -876,198 +877,259 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
           padding: EdgeInsets.only(top: 15, left: 10, right: 10),
           children: [
             // Upcoming Section
-            InkWell(
-              onTap: () {
-                setState(() {
-                  isUpcomingExpanded = !isUpcomingExpanded;
-                });
-              },
-              child: Padding(
-                padding: EdgeInsets.only(bottom: 10),
-                child: Row(
-                  children: [
-                    Text(
-                      'Upcoming',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: WarnaSecondary,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          '${upcomingTasks.length}',
+            Column(
+              children: [
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      isUpcomingExpanded = !isUpcomingExpanded;
+                    });
+                  },
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: 10),
+                    child: Row(
+                      children: [
+                        Text(
+                          'Upcoming',
                           style: TextStyle(
-                            color: WarnaUtama,
-                            fontSize: 12,
+                            color: Colors.white,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Icon(
-                      isUpcomingExpanded
-                          ? Icons.keyboard_arrow_up
-                          : Icons.keyboard_arrow_down,
-                      color: Colors.white,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (isUpcomingExpanded)
-              ...upcomingTasks.map((task) => _buildTaskCard(task)),
-
-            // Today Section
-            InkWell(
-              onTap: () {
-                setState(() {
-                  isTodayExpanded = !isTodayExpanded;
-                });
-              },
-              child: Padding(
-                padding: EdgeInsets.only(bottom: 10),
-                child: Row(
-                  children: [
-                    Text(
-                      'Today',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Container(
-                      width: 24,
-                      height: 24,
-                      decoration: BoxDecoration(
-                        color: WarnaSecondary,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          '${todayTasks.length}',
-                          style: TextStyle(
-                            color: WarnaUtama,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                        SizedBox(width: 8),
+                        Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: WarnaSecondary,
+                            shape: BoxShape.circle,
                           ),
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: 8),
-                    Icon(
-                      isTodayExpanded
-                          ? Icons.keyboard_arrow_up
-                          : Icons.keyboard_arrow_down,
-                      color: Colors.white,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (isTodayExpanded)
-              ...todayTasks.map((task) => _buildTaskCard(task, isToday: true)),
-
-            // Overdue Section
-            if (overdueTasks.isNotEmpty) ...[
-              InkWell(
-                onTap: () {
-                  setState(() {
-                    isOverdueExpanded = !isOverdueExpanded;
-                  });
-                },
-                child: Padding(
-                  padding: EdgeInsets.only(bottom: 10),
-                  child: Row(
-                    children: [
-                      Text(
-                        'Overdue',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      SizedBox(width: 8),
-                      Container(
-                        width: 24,
-                        height: 24,
-                        decoration: BoxDecoration(
-                          color: WarnaSecondary,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${overdueTasks.length}',
-                            style: TextStyle(
-                              color: WarnaUtama,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
+                          child: Center(
+                            child: Text(
+                              '${upcomingTasks.length}',
+                              style: TextStyle(
+                                color: WarnaUtama,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      SizedBox(width: 8),
-                      Icon(
-                        isOverdueExpanded
-                            ? Icons.keyboard_arrow_up
-                            : Icons.keyboard_arrow_down,
-                        color: Colors.white,
-                      ),
-                    ],
+                        SizedBox(width: 8),
+                        AnimatedRotation(
+                          duration: _animationDuration,
+                          turns: isUpcomingExpanded ? 0.5 : 0.0,
+                          child: Icon(
+                            Icons.keyboard_arrow_down,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
+                AnimatedCrossFade(
+                  firstChild: Column(
+                    children: upcomingTasks
+                        .map((task) => _buildTaskCard(task))
+                        .toList(),
+                  ),
+                  secondChild: Container(),
+                  crossFadeState: isUpcomingExpanded
+                      ? CrossFadeState.showFirst
+                      : CrossFadeState.showSecond,
+                  duration: _animationDuration,
+                ),
+              ],
+            ),
+
+            // Today Section
+            Column(
+              children: [
+                InkWell(
+                  onTap: () {
+                    setState(() {
+                      isTodayExpanded = !isTodayExpanded;
+                    });
+                  },
+                  child: Padding(
+                    padding: EdgeInsets.only(bottom: 10),
+                    child: Row(
+                      children: [
+                        Text(
+                          'Today',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: WarnaSecondary,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${todayTasks.length}',
+                              style: TextStyle(
+                                color: WarnaUtama,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: 8),
+                        AnimatedRotation(
+                          duration: _animationDuration,
+                          turns: isTodayExpanded ? 0.5 : 0.0,
+                          child: Icon(
+                            Icons.keyboard_arrow_down,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                AnimatedCrossFade(
+                  firstChild: Column(
+                    children: todayTasks
+                        .map((task) => _buildTaskCard(task, isToday: true))
+                        .toList(),
+                  ),
+                  secondChild: Container(),
+                  crossFadeState: isTodayExpanded
+                      ? CrossFadeState.showFirst
+                      : CrossFadeState.showSecond,
+                  duration: _animationDuration,
+                ),
+              ],
+            ),
+
+            // Overdue Section
+            if (overdueTasks.isNotEmpty)
+              Column(
+                children: [
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        isOverdueExpanded = !isOverdueExpanded;
+                      });
+                    },
+                    child: Padding(
+                      padding: EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Overdue',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: WarnaSecondary,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Text(
+                                '${overdueTasks.length}',
+                                style: TextStyle(
+                                  color: WarnaUtama,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          AnimatedRotation(
+                            duration: _animationDuration,
+                            turns: isOverdueExpanded ? 0.5 : 0.0,
+                            child: Icon(
+                              Icons.keyboard_arrow_down,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  AnimatedCrossFade(
+                    firstChild: Column(
+                      children: overdueTasks
+                          .map((task) => _buildTaskCard(task, isOverdue: true))
+                          .toList(),
+                    ),
+                    secondChild: Container(),
+                    crossFadeState: isOverdueExpanded
+                        ? CrossFadeState.showFirst
+                        : CrossFadeState.showSecond,
+                    duration: _animationDuration,
+                  ),
+                ],
               ),
-              if (isOverdueExpanded)
-                ...overdueTasks
-                    .map((task) => _buildTaskCard(task, isOverdue: true)),
-            ],
 
             // Completed Section
-            if (completedTasks.isNotEmpty) ...[
-              InkWell(
-                onTap: () {
-                  setState(() {
-                    isCompletedExpanded = !isCompletedExpanded;
-                  });
-                },
-                child: Padding(
-                  padding: EdgeInsets.only(bottom: 10),
-                  child: Row(
-                    children: [
-                      Text(
-                        'Completed',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
+            if (completedTasks.isNotEmpty)
+              Column(
+                children: [
+                  InkWell(
+                    onTap: () {
+                      setState(() {
+                        isCompletedExpanded = !isCompletedExpanded;
+                      });
+                    },
+                    child: Padding(
+                      padding: EdgeInsets.only(bottom: 10),
+                      child: Row(
+                        children: [
+                          Text(
+                            'Completed',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          AnimatedRotation(
+                            duration: _animationDuration,
+                            turns: isCompletedExpanded ? 0.5 : 0.0,
+                            child: Icon(
+                              Icons.keyboard_arrow_down,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
-                      SizedBox(width: 8),
-                      Icon(
-                        isCompletedExpanded
-                            ? Icons.keyboard_arrow_up
-                            : Icons.keyboard_arrow_down,
-                        color: Colors.white,
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                  AnimatedCrossFade(
+                    firstChild: Column(
+                      children: completedTasks
+                          .map((task) => _buildTaskCard(task))
+                          .toList(),
+                    ),
+                    secondChild: Container(),
+                    crossFadeState: isCompletedExpanded
+                        ? CrossFadeState.showFirst
+                        : CrossFadeState.showSecond,
+                    duration: _animationDuration,
+                  ),
+                ],
               ),
-              if (isCompletedExpanded)
-                ...completedTasks.map((task) => _buildTaskCard(task)),
-            ],
           ],
         ),
       ),
@@ -1419,11 +1481,9 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
             SizedBox(height: 4),
             Row(
               children: [
-                // Grup waktu, tanggal, dan status keterlambatan
                 Wrap(
-                  spacing: 5, // Spacing antar elemen
+                  spacing: 5,
                   children: [
-                    // Tampilkan waktu jika ada
                     if (task['time'] != null)
                       Text(
                         '${task['time']}'.substring(0, 5),
@@ -1432,7 +1492,6 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                           fontSize: 12,
                         ),
                       ),
-                    // Tampilkan tanggal untuk semua task yang bukan today
                     if (!isToday && task['due_date'] != null)
                       Text(
                         '${DateTime.parse(task['due_date']).toLocal().toString().substring(8, 10)}-${DateTime.parse(task['due_date']).toLocal().toString().substring(5, 7)}',
@@ -1441,7 +1500,6 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                           fontSize: 12,
                         ),
                       ),
-                    // Tampilkan keterlambatan untuk semua task yang overdue
                     if (isTimeOverdue && !isCompleted)
                       Text(
                         _getOverdueText(task),
@@ -1510,7 +1568,6 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
     final taskDate = DateTime.parse(task['due_date']).toLocal();
 
     if (task['time'] != null) {
-      // Jika ada waktu spesifik
       final timeparts = task['time'].split(':');
       final taskDateTime = DateTime(
         taskDate.year,
