@@ -27,6 +27,17 @@ class _KalenderPageState extends State<KalenderPage> {
   DateTime? _selectedDay;
   Map<DateTime, List<dynamic>> _events = {};
   bool isCompletedExpanded = true;
+  final _formKey = GlobalKey<FormState>();
+  final _taskController = TextEditingController();
+  String? selectedCategory;
+  DateTime? selectedDate;
+  TimeOfDay? selectedTime;
+  String? selectedPriority;
+  bool _isCategoryMenuOpen = false;
+  bool _isPriorityMenuOpen = false;
+  final GlobalKey<State> _categoryKey = GlobalKey<State>();
+  final GlobalKey _priorityKey = GlobalKey();
+  List<String> categories = [];
 
   @override
   void initState() {
@@ -34,6 +45,7 @@ class _KalenderPageState extends State<KalenderPage> {
     _selectedDay = DateTime.now();
     _focusedDay = DateTime.now();
     _loadEvents();
+    _loadCategories();
   }
 
   Future<void> _loadEvents() async {
@@ -56,6 +68,32 @@ class _KalenderPageState extends State<KalenderPage> {
       });
     } catch (e) {
       print('Error loading events: $e');
+    }
+  }
+
+  Future<void> _loadCategories() async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        final data = await Supabase.instance.client
+            .from('users')
+            .select('categories')
+            .eq('id', user.id)
+            .single();
+
+        setState(() {
+          categories = List<String>.from(data['categories'] ?? []);
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No Internet Connection'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -270,6 +308,683 @@ class _KalenderPageState extends State<KalenderPage> {
           ],
         ),
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Reset nilai-nilai yang diperlukan
+          _taskController.clear();
+          selectedCategory = null;
+          selectedDate = _selectedDay;
+          selectedTime = null;
+          selectedPriority = null;
+
+          showModalBottomSheet(
+            context: context,
+            isScrollControlled: true,
+            backgroundColor: Colors.transparent,
+            builder: (BuildContext context) {
+              return StatefulBuilder(
+                builder: (BuildContext context, StateSetter setModalState) {
+                  return Padding(
+                    padding: EdgeInsets.only(
+                        bottom: MediaQuery.of(context).viewInsets.bottom),
+                    child: Container(
+                      height: MediaQuery.of(context).size.height * 0.3,
+                      decoration: BoxDecoration(
+                        color: WarnaUtama,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(20),
+                          topRight: Radius.circular(20),
+                        ),
+                      ),
+                      padding: EdgeInsets.only(left: 16, right: 16, top: 20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Form(
+                            key: _formKey,
+                            child: Column(
+                              children: [
+                                TextFormField(
+                                  controller: _taskController,
+                                  cursorColor: WarnaSecondary,
+                                  autofocus: true,
+                                  style: TextStyle(
+                                    color: WarnaSecondary,
+                                    fontSize: 16,
+                                  ),
+                                  decoration: InputDecoration(
+                                    labelText: 'Add New Task',
+                                    labelStyle: TextStyle(
+                                      color: WarnaSecondary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                      borderSide:
+                                          BorderSide(color: WarnaSecondary),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                      borderSide: BorderSide(
+                                          color: WarnaSecondary, width: 0.5),
+                                    ),
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(15),
+                                      borderSide: BorderSide(
+                                          color: WarnaSecondary, width: 1),
+                                    ),
+                                    filled: true,
+                                    fillColor: WarnaUtama,
+                                    prefixIcon: Icon(Icons.task_alt,
+                                        color: WarnaSecondary),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter a task';
+                                    }
+                                    return null;
+                                  },
+                                ),
+                                SizedBox(height: 10),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.start,
+                                  children: [
+                                    // Category section
+                                    Container(
+                                      key: _categoryKey,
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 12, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: WarnaUtama2,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setModalState(() {
+                                            _isCategoryMenuOpen = true;
+                                          });
+
+                                          final RenderBox? button = _categoryKey
+                                                  .currentContext
+                                                  ?.findRenderObject()
+                                              as RenderBox?;
+                                          if (button != null) {
+                                            final position = button
+                                                .localToGlobal(Offset.zero);
+                                            final size = button.size;
+
+                                            showMenu(
+                                              context: context,
+                                              position: RelativeRect.fromLTRB(
+                                                position.dx,
+                                                position.dy -
+                                                    (categories.length + 1) *
+                                                        55.0,
+                                                position.dx + size.width,
+                                                position.dy + size.height,
+                                              ),
+                                              color: WarnaUtama2,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              elevation: 8,
+                                              items: [
+                                                ...categories.map(
+                                                  (category) => PopupMenuItem(
+                                                    value: category,
+                                                    child: Text(
+                                                      category,
+                                                      style: TextStyle(
+                                                          color:
+                                                              Colors.white70),
+                                                    ),
+                                                  ),
+                                                ),
+                                                PopupMenuItem(
+                                                  value: 'add_category',
+                                                  child: Row(
+                                                    children: [
+                                                      Icon(
+                                                        Icons.add,
+                                                        color: WarnaSecondary,
+                                                        size: 20,
+                                                      ),
+                                                      SizedBox(width: 8),
+                                                      Text(
+                                                        'Add Category',
+                                                        style: TextStyle(
+                                                          color: WarnaSecondary,
+                                                          fontSize: 14,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ).then((selectedValue) {
+                                              setModalState(() {
+                                                _isCategoryMenuOpen = false;
+                                                if (selectedValue != null &&
+                                                    selectedValue !=
+                                                        'add_category') {
+                                                  selectedCategory =
+                                                      selectedValue;
+                                                }
+                                              });
+                                            });
+                                          }
+                                        },
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              selectedCategory ?? 'No Category',
+                                              style: TextStyle(
+                                                color: Colors.white70,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                            SizedBox(width: 2),
+                                            AnimatedRotation(
+                                              turns:
+                                                  _isCategoryMenuOpen ? 0.5 : 0,
+                                              duration:
+                                                  Duration(milliseconds: 200),
+                                              child: Icon(
+                                                _isCategoryMenuOpen
+                                                    ? Icons.keyboard_arrow_down
+                                                    : Icons.keyboard_arrow_up,
+                                                color: Colors.white70,
+                                                size: 20,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    // Time button
+                                    Padding(
+                                      padding: EdgeInsets.only(left: 8),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          // Calendar button
+                                          SizedBox(
+                                            width: 32,
+                                            child: IconButton(
+                                              padding: EdgeInsets.zero,
+                                              constraints: BoxConstraints(
+                                                minWidth: 32,
+                                                maxWidth: 32,
+                                                minHeight: 32,
+                                                maxHeight: 32,
+                                              ),
+                                              onPressed: () async {
+                                                final DateTime? pickedDate =
+                                                    await showDatePicker(
+                                                  context: context,
+                                                  initialDate: selectedDate ??
+                                                      DateTime.now(),
+                                                  firstDate: DateTime.now(),
+                                                  lastDate:
+                                                      DateTime(2025, 12, 31),
+                                                  builder: (context, child) {
+                                                    return Theme(
+                                                      data: Theme.of(context)
+                                                          .copyWith(
+                                                        colorScheme:
+                                                            ColorScheme.dark(
+                                                          primary:
+                                                              WarnaSecondary,
+                                                          onPrimary:
+                                                              Colors.black,
+                                                          surface: WarnaUtama,
+                                                          onSurface:
+                                                              Colors.white,
+                                                        ),
+                                                        dialogBackgroundColor:
+                                                            WarnaUtama,
+                                                      ),
+                                                      child: child!,
+                                                    );
+                                                  },
+                                                );
+                                                if (pickedDate != null) {
+                                                  setModalState(() {
+                                                    selectedDate = pickedDate;
+                                                  });
+                                                }
+                                              },
+                                              icon: Icon(
+                                                Icons.calendar_today,
+                                                color: WarnaSecondary,
+                                                size: 24,
+                                              ),
+                                            ),
+                                          ),
+                                          // Time button
+                                          SizedBox(
+                                            width: 32,
+                                            child: IconButton(
+                                              padding: EdgeInsets.zero,
+                                              constraints: BoxConstraints(
+                                                minWidth: 32,
+                                                maxWidth: 32,
+                                                minHeight: 32,
+                                                maxHeight: 32,
+                                              ),
+                                              onPressed: () async {
+                                                final result =
+                                                    await showDialog<dynamic>(
+                                                  context: context,
+                                                  builder:
+                                                      (BuildContext context) {
+                                                    return Dialog(
+                                                      backgroundColor:
+                                                          Colors.transparent,
+                                                      insetPadding:
+                                                          EdgeInsets.symmetric(
+                                                              horizontal: 20),
+                                                      child: StatefulBuilder(
+                                                        builder: (context,
+                                                            setState) {
+                                                          return Container(
+                                                            decoration:
+                                                                BoxDecoration(
+                                                              color: WarnaUtama,
+                                                              borderRadius:
+                                                                  BorderRadius
+                                                                      .circular(
+                                                                          16),
+                                                            ),
+                                                            child: Column(
+                                                              mainAxisSize:
+                                                                  MainAxisSize
+                                                                      .min,
+                                                              children: [
+                                                                Padding(
+                                                                  padding:
+                                                                      const EdgeInsets
+                                                                          .all(
+                                                                          16),
+                                                                  child: Text(
+                                                                    'Select time',
+                                                                    style:
+                                                                        TextStyle(
+                                                                      color: Colors
+                                                                          .white,
+                                                                      fontSize:
+                                                                          18,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                    ),
+                                                                  ),
+                                                                ),
+                                                                Padding(
+                                                                  padding:
+                                                                      const EdgeInsets
+                                                                          .all(
+                                                                          16),
+                                                                  child: Row(
+                                                                    mainAxisAlignment:
+                                                                        MainAxisAlignment
+                                                                            .spaceBetween,
+                                                                    children: [
+                                                                      TextButton(
+                                                                        onPressed:
+                                                                            () {
+                                                                          Navigator.pop(
+                                                                              context,
+                                                                              'no_time');
+                                                                        },
+                                                                        child:
+                                                                            Text(
+                                                                          'No Time',
+                                                                          style:
+                                                                              TextStyle(
+                                                                            color:
+                                                                                WarnaSecondary,
+                                                                            fontSize:
+                                                                                16,
+                                                                          ),
+                                                                        ),
+                                                                      ),
+                                                                      Row(
+                                                                        children: [
+                                                                          TextButton(
+                                                                            onPressed: () =>
+                                                                                Navigator.pop(context, 'cancel'),
+                                                                            child:
+                                                                                Text(
+                                                                              'Cancel',
+                                                                              style: TextStyle(
+                                                                                color: WarnaSecondary,
+                                                                                fontSize: 16,
+                                                                              ),
+                                                                            ),
+                                                                          ),
+                                                                          SizedBox(
+                                                                              width: 16),
+                                                                          ElevatedButton(
+                                                                            style:
+                                                                                ElevatedButton.styleFrom(
+                                                                              backgroundColor: WarnaSecondary,
+                                                                              foregroundColor: Colors.black,
+                                                                              shape: RoundedRectangleBorder(
+                                                                                borderRadius: BorderRadius.circular(8),
+                                                                              ),
+                                                                            ),
+                                                                            onPressed:
+                                                                                () async {
+                                                                              final timeResult = await showTimePicker(
+                                                                                context: context,
+                                                                                initialTime: TimeOfDay.now(),
+                                                                              );
+                                                                              Navigator.pop(context, timeResult);
+                                                                            },
+                                                                            child:
+                                                                                Text(
+                                                                              'Select Time',
+                                                                              style: TextStyle(
+                                                                                fontSize: 16,
+                                                                                fontWeight: FontWeight.bold,
+                                                                              ),
+                                                                            ),
+                                                                          ),
+                                                                        ],
+                                                                      ),
+                                                                    ],
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          );
+                                                        },
+                                                      ),
+                                                    );
+                                                  },
+                                                );
+
+                                                if (result != null &&
+                                                    result != 'cancel') {
+                                                  setModalState(() {
+                                                    if (result == 'no_time') {
+                                                      selectedTime = null;
+                                                    } else if (result
+                                                        is TimeOfDay) {
+                                                      selectedTime = result;
+                                                    }
+                                                  });
+                                                }
+                                              },
+                                              icon: Icon(
+                                                Icons.access_time,
+                                                color: WarnaSecondary,
+                                                size: 28,
+                                              ),
+                                            ),
+                                          ),
+                                          // Menampilkan tanggal yang dipilih
+                                          if (selectedDate != null &&
+                                              selectedDate != _selectedDay)
+                                            Padding(
+                                              padding: EdgeInsets.only(left: 4),
+                                              child: Text(
+                                                '${selectedDate!.day}/${selectedDate!.month}',
+                                                style: TextStyle(
+                                                  color: WarnaSecondary,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ),
+                                          // Menampilkan waktu yang dipilih
+                                          if (selectedTime != null)
+                                            Padding(
+                                              padding: EdgeInsets.only(left: 4),
+                                              child: Text(
+                                                selectedTime!.format(context),
+                                                style: TextStyle(
+                                                  color: WarnaSecondary,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                    // Priority dropdown
+                                    SizedBox(width: 8),
+                                    Container(
+                                      key: _priorityKey,
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: WarnaUtama2,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setModalState(() {
+                                            _isPriorityMenuOpen = true;
+                                          });
+
+                                          final RenderBox? button = _priorityKey
+                                                  .currentContext
+                                                  ?.findRenderObject()
+                                              as RenderBox?;
+                                          if (button != null) {
+                                            final position = button
+                                                .localToGlobal(Offset.zero);
+                                            final size = button.size;
+
+                                            showMenu(
+                                              context: context,
+                                              position: RelativeRect.fromLTRB(
+                                                position.dx,
+                                                position.dy - 165,
+                                                position.dx + size.width,
+                                                position.dy + size.height,
+                                              ),
+                                              color: WarnaUtama2,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              elevation: 8,
+                                              items: [
+                                                PopupMenuItem(
+                                                  value: 'high',
+                                                  child: Row(
+                                                    children: [
+                                                      Container(
+                                                        width: 12,
+                                                        height: 12,
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: Colors.red,
+                                                          shape:
+                                                              BoxShape.circle,
+                                                        ),
+                                                      ),
+                                                      SizedBox(width: 8),
+                                                      Text(
+                                                        'High',
+                                                        style: TextStyle(
+                                                            color:
+                                                                Colors.white70),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                PopupMenuItem(
+                                                  value: 'medium',
+                                                  child: Row(
+                                                    children: [
+                                                      Container(
+                                                        width: 12,
+                                                        height: 12,
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: Colors.orange,
+                                                          shape:
+                                                              BoxShape.circle,
+                                                        ),
+                                                      ),
+                                                      SizedBox(width: 8),
+                                                      Text(
+                                                        'Medium',
+                                                        style: TextStyle(
+                                                            color:
+                                                                Colors.white70),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                PopupMenuItem(
+                                                  value: 'low',
+                                                  child: Row(
+                                                    children: [
+                                                      Container(
+                                                        width: 12,
+                                                        height: 12,
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: Colors.green,
+                                                          shape:
+                                                              BoxShape.circle,
+                                                        ),
+                                                      ),
+                                                      SizedBox(width: 8),
+                                                      Text(
+                                                        'Low',
+                                                        style: TextStyle(
+                                                            color:
+                                                                Colors.white70),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ).then((value) {
+                                              setModalState(() {
+                                                _isPriorityMenuOpen = false;
+                                                if (value != null) {
+                                                  selectedPriority = value;
+                                                }
+                                              });
+                                            });
+                                          }
+                                        },
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              width: 12,
+                                              height: 12,
+                                              margin: EdgeInsets.only(
+                                                  right:
+                                                      selectedPriority != null
+                                                          ? 0
+                                                          : 8),
+                                              decoration: BoxDecoration(
+                                                color: selectedPriority != null
+                                                    ? _getPriorityColor(
+                                                        selectedPriority)
+                                                    : Colors.grey,
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                            if (selectedPriority == null)
+                                              Text(
+                                                'Priority',
+                                                style: TextStyle(
+                                                  color: Colors.white70,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            SizedBox(width: 2),
+                                            AnimatedRotation(
+                                              turns:
+                                                  _isPriorityMenuOpen ? 0.5 : 0,
+                                              duration:
+                                                  Duration(milliseconds: 200),
+                                              child: Icon(
+                                                _isPriorityMenuOpen
+                                                    ? Icons.keyboard_arrow_down
+                                                    : Icons.keyboard_arrow_up,
+                                                color: Colors.white70,
+                                                size: 20,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                SizedBox(height: 20),
+                                Container(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(15),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: WarnaSecondary.withOpacity(0.3),
+                                        spreadRadius: 1,
+                                        blurRadius: 5,
+                                        offset: Offset(0, 2),
+                                      ),
+                                    ],
+                                  ),
+                                  child: ElevatedButton(
+                                    onPressed: () async {
+                                      if (_formKey.currentState!.validate()) {
+                                        final taskTitle =
+                                            _taskController.text.trim();
+                                        final category =
+                                            selectedCategory == 'All'
+                                                ? null
+                                                : selectedCategory;
+
+                                        await _saveTask(taskTitle, category);
+                                        _taskController.clear();
+                                        Navigator.pop(context);
+                                      }
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: WarnaSecondary,
+                                      minimumSize: Size(double.infinity, 50),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(15),
+                                      ),
+                                      elevation: 0,
+                                    ),
+                                    child: Text(
+                                      'Add Task',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: WarnaUtama,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        },
+        backgroundColor: WarnaSecondary,
+        child: Icon(Icons.add, color: WarnaUtama),
+      ),
     );
   }
 
@@ -435,6 +1150,50 @@ class _KalenderPageState extends State<KalenderPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error updating task'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _saveTask(String taskTitle, String? category) async {
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        final taskDate = selectedDate ?? DateTime.now();
+
+        final timeString = selectedTime != null
+            ? '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}'
+            : null;
+
+        await Supabase.instance.client.from('tasks').insert({
+          'title': taskTitle,
+          'category': category,
+          'priority': selectedPriority,
+          'user_id': user.id,
+          'is_completed': false,
+          'created_at': DateTime.now().toIso8601String(),
+          'due_date': taskDate.toIso8601String(),
+          'time': timeString,
+        });
+
+        await _loadEvents();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Task added successfully'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error adding task: ${error.toString()}'),
             backgroundColor: Colors.red,
           ),
         );
