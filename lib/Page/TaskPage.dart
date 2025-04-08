@@ -1270,7 +1270,7 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                                       ),
                                       child: GestureDetector(
                                         onTap: () {
-                                          setState(() {
+                                          setModalState(() {
                                             _isCategoryMenuOpen = true;
                                           });
 
@@ -1291,9 +1291,14 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                                                     (categories.length + 1) *
                                                         55.0,
                                                 position.dx + size.width,
-                                                position.dy,
+                                                position.dy + size.height,
                                               ),
                                               color: WarnaUtama2,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              elevation: 8,
                                               items: [
                                                 ...categories.map(
                                                   (category) => PopupMenuItem(
@@ -1371,7 +1376,9 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                                               duration:
                                                   Duration(milliseconds: 200),
                                               child: Icon(
-                                                Icons.keyboard_arrow_down,
+                                                _isCategoryMenuOpen
+                                                    ? Icons.keyboard_arrow_down
+                                                    : Icons.keyboard_arrow_up,
                                                 color: Colors.white70,
                                                 size: 20,
                                               ),
@@ -1505,9 +1512,14 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                                                 position.dy -
                                                     165, // Adjust this value as needed
                                                 position.dx + size.width,
-                                                position.dy,
+                                                position.dy + size.height,
                                               ),
                                               color: WarnaUtama2,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              elevation: 8,
                                               items: [
                                                 PopupMenuItem(
                                                   value: 'high',
@@ -1626,7 +1638,9 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                                               duration:
                                                   Duration(milliseconds: 200),
                                               child: Icon(
-                                                Icons.keyboard_arrow_up,
+                                                _isPriorityMenuOpen
+                                                    ? Icons.keyboard_arrow_down
+                                                    : Icons.keyboard_arrow_up,
                                                 color: Colors.white70,
                                                 size: 20,
                                               ),
