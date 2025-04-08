@@ -31,6 +31,9 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
   final Duration _animationDuration = Duration(milliseconds: 300);
   final GlobalKey<State> _categoryKey = GlobalKey<State>();
   bool _isCategoryMenuOpen = false;
+  String? selectedPriority;
+  bool _isPriorityMenuOpen = false;
+  final GlobalKey _priorityKey = GlobalKey();
 
   @override
   void initState() {
@@ -186,10 +189,11 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
             ? '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}'
             : null;
 
-        // Buat task tanpa ID (Supabase akan generate UUID secara otomatis)
+        // Tambahkan priority ke data task
         final response = await Supabase.instance.client.from('tasks').insert({
           'title': taskTitle,
           'category': category,
+          'priority': selectedPriority,
           'user_id': user.id,
           'is_completed': false,
           'created_at': DateTime.now().toIso8601String(),
@@ -823,6 +827,20 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
     );
   }
 
+  // Tambahkan helper method untuk mendapatkan warna priority
+  Color _getPriorityColor(String? priority) {
+    switch (priority?.toLowerCase()) {
+      case 'high':
+        return Colors.red;
+      case 'medium':
+        return Colors.orange;
+      case 'low':
+        return Colors.green;
+      default:
+        return Colors.grey;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
@@ -1362,7 +1380,7 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                                         ),
                                       ),
                                     ),
-                                    // Date and Time section in a tight row
+                                    // Date and Time section
                                     Padding(
                                       padding: EdgeInsets.only(left: 8),
                                       child: Row(
@@ -1453,6 +1471,168 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                                               ),
                                             ),
                                         ],
+                                      ),
+                                    ),
+                                    // Priority dropdown
+                                    SizedBox(width: 8),
+                                    Container(
+                                      key: _priorityKey,
+                                      padding: EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 6),
+                                      decoration: BoxDecoration(
+                                        color: WarnaUtama2,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: GestureDetector(
+                                        onTap: () {
+                                          setModalState(() {
+                                            _isPriorityMenuOpen = true;
+                                          });
+
+                                          final RenderBox? button = _priorityKey
+                                                  .currentContext
+                                                  ?.findRenderObject()
+                                              as RenderBox?;
+                                          if (button != null) {
+                                            final position = button
+                                                .localToGlobal(Offset.zero);
+                                            final size = button.size;
+
+                                            showMenu(
+                                              context: context,
+                                              position: RelativeRect.fromLTRB(
+                                                position.dx,
+                                                position.dy -
+                                                    165, // Adjust this value as needed
+                                                position.dx + size.width,
+                                                position.dy,
+                                              ),
+                                              color: WarnaUtama2,
+                                              items: [
+                                                PopupMenuItem(
+                                                  value: 'high',
+                                                  child: Row(
+                                                    children: [
+                                                      Container(
+                                                        width: 12,
+                                                        height: 12,
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: Colors.red,
+                                                          shape:
+                                                              BoxShape.circle,
+                                                        ),
+                                                      ),
+                                                      SizedBox(width: 8),
+                                                      Text(
+                                                        'High',
+                                                        style: TextStyle(
+                                                            color:
+                                                                Colors.white70),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                PopupMenuItem(
+                                                  value: 'medium',
+                                                  child: Row(
+                                                    children: [
+                                                      Container(
+                                                        width: 12,
+                                                        height: 12,
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: Colors.orange,
+                                                          shape:
+                                                              BoxShape.circle,
+                                                        ),
+                                                      ),
+                                                      SizedBox(width: 8),
+                                                      Text(
+                                                        'Medium',
+                                                        style: TextStyle(
+                                                            color:
+                                                                Colors.white70),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                                PopupMenuItem(
+                                                  value: 'low',
+                                                  child: Row(
+                                                    children: [
+                                                      Container(
+                                                        width: 12,
+                                                        height: 12,
+                                                        decoration:
+                                                            BoxDecoration(
+                                                          color: Colors.green,
+                                                          shape:
+                                                              BoxShape.circle,
+                                                        ),
+                                                      ),
+                                                      SizedBox(width: 8),
+                                                      Text(
+                                                        'Low',
+                                                        style: TextStyle(
+                                                            color:
+                                                                Colors.white70),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ],
+                                            ).then((value) {
+                                              setModalState(() {
+                                                _isPriorityMenuOpen = false;
+                                                if (value != null) {
+                                                  selectedPriority = value;
+                                                }
+                                              });
+                                            });
+                                          }
+                                        },
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              width: 12,
+                                              height: 12,
+                                              margin: EdgeInsets.only(
+                                                  right:
+                                                      selectedPriority != null
+                                                          ? 0
+                                                          : 8),
+                                              decoration: BoxDecoration(
+                                                color: selectedPriority != null
+                                                    ? _getPriorityColor(
+                                                        selectedPriority)
+                                                    : Colors.grey,
+                                                shape: BoxShape.circle,
+                                              ),
+                                            ),
+                                            if (selectedPriority == null)
+                                              Text(
+                                                'Priority',
+                                                style: TextStyle(
+                                                  color: Colors.white70,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            SizedBox(width: 2),
+                                            AnimatedRotation(
+                                              turns:
+                                                  _isPriorityMenuOpen ? 0.5 : 0,
+                                              duration:
+                                                  Duration(milliseconds: 200),
+                                              child: Icon(
+                                                Icons.keyboard_arrow_up,
+                                                color: Colors.white70,
+                                                size: 20,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -1591,7 +1771,7 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
         case 'low':
           return Colors.green;
         default:
-          return Colors.transparent;
+          return Colors.grey;
       }
     }
 
