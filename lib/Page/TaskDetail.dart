@@ -441,8 +441,34 @@ class _TaskDetailState extends State<TaskDetail> {
 
     if (result != null) {
       try {
+        // Jika ada waktu yang sudah diset, gunakan waktu tersebut
+        TimeOfDay? existingTime;
+        if (widget.task['time'] != null) {
+          final timeParts = widget.task['time'].split(':');
+          existingTime = TimeOfDay(
+            hour: int.parse(timeParts[0]),
+            minute: int.parse(timeParts[1]),
+          );
+        }
+
+        // Buat DateTime dengan waktu yang ada atau waktu default
+        final localDateTime = DateTime(
+          result.year,
+          result.month,
+          result.day,
+          existingTime?.hour ?? 0,
+          existingTime?.minute ?? 0,
+        );
+
+        // Konversi ke UTC
+        final utcDateTime = localDateTime.toUtc();
+
+        // Format tanggal untuk disimpan
         final dateString =
-            "${result.year}-${result.month.toString().padLeft(2, '0')}-${result.day.toString().padLeft(2, '0')}";
+            "${utcDateTime.year}-${utcDateTime.month.toString().padLeft(2, '0')}-${utcDateTime.day.toString().padLeft(2, '0')}";
+
+        print('Local date selected: $localDateTime');
+        print('UTC date to save: $dateString');
 
         await Supabase.instance.client.from('tasks').update({
           'due_date': dateString,
@@ -454,26 +480,33 @@ class _TaskDetailState extends State<TaskDetail> {
         });
 
         // Schedule notification if both date and time are set
-        if (widget.task['due_date'] != null && widget.task['time'] != null) {
-          final date = DateTime.parse(dateString);
+        if (widget.task['time'] != null) {
           final time = widget.task['time'].split(':');
-          final scheduledDate = DateTime(
-            date.year,
-            date.month,
-            date.day,
+          final scheduledDateTime = DateTime(
+            result.year,
+            result.month,
+            result.day,
             int.parse(time[0]),
             int.parse(time[1]),
           );
 
-          if (scheduledDate.isAfter(DateTime.now())) {
+          // Konversi ke UTC untuk notifikasi
+          final scheduledDateTimeUtc = scheduledDateTime.toUtc();
+
+          if (scheduledDateTime.isAfter(DateTime.now())) {
             try {
               final notificationId = _getNotificationId(widget.task['id']);
 
               await _notificationService.scheduleTaskNotification(
                 id: notificationId,
                 title: widget.task['title'],
-                scheduledDate: scheduledDate,
+                scheduledDate: scheduledDateTimeUtc,
+                taskId: widget.task['id'],
               );
+
+              print(
+                  'Scheduling notification for local time: $scheduledDateTime');
+              print('Saving to Supabase in UTC: $scheduledDateTimeUtc');
             } catch (e) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -483,8 +516,6 @@ class _TaskDetailState extends State<TaskDetail> {
                 ),
               );
             }
-          } else {
-            print('Scheduled date is in the past: $scheduledDate');
           }
         }
 
@@ -820,12 +851,11 @@ class _TaskDetailState extends State<TaskDetail> {
       },
     );
 
-    // Handle hasil dialog
     if (result == 'no_time') {
       try {
         await Supabase.instance.client.from('tasks').update({
           'time': null,
-          'updated_at': DateTime.now().toIso8601String(),
+          'updated_at': DateTime.now().toUtc().toIso8601String(),
         }).eq('id', widget.task['id']);
 
         setState(() {
@@ -852,47 +882,46 @@ class _TaskDetailState extends State<TaskDetail> {
       }
     } else if (result is TimeOfDay) {
       try {
-        final timeString =
+        // Simpan waktu lokal yang dipilih user (misal 20:41)
+        final localTimeString =
             '${result.hour.toString().padLeft(2, '0')}:${result.minute.toString().padLeft(2, '0')}:00';
 
+        // Simpan ke database dalam waktu lokal
         await Supabase.instance.client.from('tasks').update({
-          'time': timeString,
+          'time': localTimeString, // Simpan 20:41 ke database
           'updated_at': DateTime.now().toIso8601String(),
         }).eq('id', widget.task['id']);
 
         setState(() {
-          widget.task['time'] = timeString;
+          widget.task['time'] =
+              localTimeString; // Update state dengan waktu lokal
         });
 
-        // Schedule notification if both date and time are set
-        if (widget.task['due_date'] != null && widget.task['time'] != null) {
+        // Hanya konversi ke UTC untuk notifikasi
+        if (widget.task['due_date'] != null) {
           final date = DateTime.parse(widget.task['due_date']);
-          final time = timeString.split(':');
-          final scheduledDate = DateTime(
+          final localDateTime = DateTime(
             date.year,
             date.month,
             date.day,
-            int.parse(time[0]),
-            int.parse(time[1]),
+            result.hour, // Gunakan jam lokal (20:41)
+            result.minute,
           );
 
-          if (scheduledDate.isAfter(DateTime.now())) {
+          // Konversi ke UTC hanya untuk notifikasi
+          final utcDateTime = localDateTime.toUtc(); // Ini akan jadi 13:41 UTC
+
+          if (localDateTime.isAfter(DateTime.now())) {
             try {
               final notificationId = _getNotificationId(widget.task['id']);
-
               await _notificationService.scheduleTaskNotification(
                 id: notificationId,
                 title: widget.task['title'],
-                scheduledDate: scheduledDate,
+                scheduledDate: utcDateTime, // Kirim waktu UTC ke notifikasi
+                taskId: widget.task['id'],
               );
             } catch (e) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content:
-                      Text('Failed to schedule notification: ${e.toString()}'),
-                  backgroundColor: Colors.red,
-                ),
-              );
+              // ... handle error ...
             }
           }
         }

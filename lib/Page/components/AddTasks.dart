@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_todolist/Service/NotificationService.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../main.dart';
 import 'package:intl/intl.dart';
@@ -71,21 +72,60 @@ class _AddTasksState extends State<AddTasks> {
       final user = Supabase.instance.client.auth.currentUser;
       if (user != null) {
         final taskDate = selectedDate ?? DateTime.now();
-
         final timeString = selectedTime != null
             ? '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}'
             : null;
 
-        await Supabase.instance.client.from('tasks').insert({
-          'title': taskTitle,
-          'category': category,
-          'priority': selectedPriority,
-          'user_id': user.id,
-          'is_completed': false,
-          'created_at': DateTime.now().toIso8601String(),
-          'due_date': taskDate.toIso8601String(),
-          'time': timeString,
-        });
+        // Create local DateTime for task storage
+        DateTime taskDateTime;
+        if (timeString != null) {
+          final timeParts = timeString.split(':');
+          taskDateTime = DateTime(
+            taskDate.year,
+            taskDate.month,
+            taskDate.day,
+            int.parse(timeParts[0]),
+            int.parse(timeParts[1]),
+          );
+        } else {
+          taskDateTime = DateTime(
+            taskDate.year,
+            taskDate.month,
+            taskDate.day,
+          );
+        }
+
+        // Store task in local time (no UTC conversion)
+        final response = await Supabase.instance.client
+            .from('tasks')
+            .insert({
+              'title': taskTitle,
+              'category': category,
+              'priority': selectedPriority,
+              'user_id': user.id,
+              'is_completed': false,
+              'created_at': DateTime.now().toIso8601String(),
+              'due_date': taskDateTime.toIso8601String(),
+              'time': timeString,
+            })
+            .select()
+            .single();
+
+        // Only convert to UTC for notification scheduling
+        if (timeString != null) {
+          final notificationService = NotificationService();
+          final notificationDateTime = taskDateTime.toUtc();
+
+          await notificationService.scheduleTaskNotification(
+            id: DateTime.now().millisecondsSinceEpoch.hashCode,
+            title: taskTitle,
+            scheduledDate: notificationDateTime,
+            taskId: response['id'],
+          );
+
+          print('Scheduling notification for local time: $taskDateTime');
+          print('Notification scheduled in UTC: $notificationDateTime');
+        }
 
         widget.onTaskAdded();
 
@@ -99,6 +139,7 @@ class _AddTasksState extends State<AddTasks> {
         }
       }
     } catch (error) {
+      print('Error in _saveTask: $error');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -672,6 +713,17 @@ class _AddTasksState extends State<AddTasks> {
     );
   }
 
+  String _formatDate(String? dateString) {
+    if (dateString == null) return 'No Date';
+    try {
+      final date = DateTime.parse(dateString)
+          .toLocal(); // Konversi ke waktu lokal untuk display
+      return "${date.day.toString().padLeft(2, '0')} ${DateFormat('MMM').format(date)} ${(date.year % 100).toString().padLeft(2, '0')}";
+    } catch (e) {
+      return dateString;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -859,7 +911,8 @@ class _AddTasksState extends State<AddTasks> {
                               Padding(
                                 padding: EdgeInsets.only(left: 0, right: 4),
                                 child: Text(
-                                  DateFormat('dd-MM').format(selectedDate!),
+                                  _formatDate(DateFormat('yyyy-MM-dd')
+                                      .format(selectedDate!)),
                                   style: TextStyle(
                                     color: Colors.white70,
                                     fontSize: 14,
