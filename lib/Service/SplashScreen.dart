@@ -43,12 +43,10 @@ class _SplashScreenState extends State<SplashScreen> {
     return Scaffold(
       backgroundColor: WarnaUtama,
       body: Center(
-        child: Text(
-          'Gambar',
-          style: TextStyle(
-            fontSize: 24,
-            color: Colors.white,
-          ),
+        child: Image.asset(
+          'Assets/TodoSplash.png',
+          width: 200,
+          height: 200,
         ),
       ),
     );
