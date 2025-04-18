@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../Navbar/NavBar.dart';
+import 'package:flutter_todolist/Page/KategoriPage.dart';
 import '../Service/NotificationService.dart';
 import '../main.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -1618,13 +1618,10 @@ class _TaskDetailState extends State<TaskDetail> {
                         });
 
                         if (selectedValue == 'add_category') {
-                          Navigator.pushReplacement(
+                          Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => NavBar(
-                                initialIndex: 2,
-                                expandCategories: true,
-                              ),
+                              builder: (context) => KategoriPage(),
                             ),
                           );
                         } else if (selectedValue != null) {

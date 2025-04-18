@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../Navbar/NavBar.dart';
+import 'package:flutter_todolist/Page/KategoriPage.dart';
 import '../main.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'TaskDetail.dart';
@@ -235,13 +235,10 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
               IconButton(
                 icon: Icon(Icons.more_vert, color: Colors.white),
                 onPressed: () {
-                  Navigator.pushReplacement(
+                  Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => NavBar(
-                        initialIndex: 2,
-                        expandCategories: true,
-                      ),
+                      builder: (context) => KategoriPage(),
                     ),
                   );
                 },
