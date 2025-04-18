@@ -4,6 +4,9 @@ import '../Form/LoginPage.dart';
 import '../main.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import 'package:path/path.dart' as path;
 
 class ProfilePage extends StatefulWidget {
   final bool initiallyExpanded;
@@ -24,6 +27,10 @@ class _ProfilePageState extends State<ProfilePage> {
   bool isLoading = true;
   int todayCompleted = 0;
   int totalCompleted = 0;
+  String? profileImageUrl;
+  String? profileImagePath;
+  bool isUploadingImage = false;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
@@ -48,6 +55,14 @@ class _ProfilePageState extends State<ProfilePage> {
             username = data['username'] ?? '';
             email = user.email ?? '';
             categories = List<String>.from(data['categories'] ?? []);
+            profileImagePath = data['profile_image_path'];
+
+            if (profileImagePath != null) {
+              _generateFreshImageUrl();
+            } else {
+              profileImageUrl = data['profile_image_url'];
+            }
+
             isLoading = false;
           });
         }
@@ -109,6 +124,246 @@ class _ProfilePageState extends State<ProfilePage> {
     }
   }
 
+  Future<void> _generateFreshImageUrl() async {
+    if (profileImagePath == null) return;
+
+    try {
+      final freshUrl = await Supabase.instance.client.storage
+          .from('profile_images')
+          .createSignedUrl(profileImagePath!, 60 * 60); // Berlaku 1 jam
+
+      if (mounted) {
+        setState(() {
+          profileImageUrl = freshUrl;
+        });
+      }
+    } catch (error) {
+      print('Error membuat URL gambar baru: $error');
+    }
+  }
+
+  Future<void> _uploadProfileImage() async {
+    // Show image source selection dialog
+    final source = await showDialog<ImageSource>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            width: MediaQuery.of(context).size.width * 0.8,
+            decoration: BoxDecoration(
+              color: WarnaUtama2,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Header
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'Choose Image Source',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                // Gallery option
+                ListTile(
+                  leading: Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: WarnaUtama.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.photo_library, color: WarnaSecondary),
+                  ),
+                  title: Text(
+                    'Choose from Gallery',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  onTap: () => Navigator.pop(context, ImageSource.gallery),
+                ),
+
+                // Camera option
+                ListTile(
+                  leading: Container(
+                    padding: EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: WarnaUtama.withOpacity(0.3),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(Icons.camera_alt, color: WarnaSecondary),
+                  ),
+                  title: Text(
+                    'Take a Photo',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  onTap: () => Navigator.pop(context, ImageSource.camera),
+                ),
+
+                // Cancel button
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      'Cancel',
+                      style: TextStyle(
+                        color: WarnaSecondary,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    if (source == null) return;
+
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: source,
+        maxWidth: 800,
+        maxHeight: 800,
+        imageQuality: 85,
+      );
+
+      if (image == null) return;
+
+      setState(() {
+        isUploadingImage = true;
+      });
+
+      final User? user = Supabase.instance.client.auth.currentUser;
+      if (user == null) throw Exception('User not authenticated');
+
+      // Ambil data user untuk mendapatkan URL gambar profil saat ini
+      final userData = await Supabase.instance.client
+          .from('users')
+          .select('profile_image_url')
+          .eq('id', user.id)
+          .single();
+
+      final currentImageUrl = userData['profile_image_url'] as String?;
+
+      // Hapus gambar lama berdasarkan URL jika ada
+      if (currentImageUrl != null && currentImageUrl.isNotEmpty) {
+        try {
+          // Ekstrak nama file dari URL
+          final uri = Uri.parse(currentImageUrl);
+          final pathSegments = uri.pathSegments;
+
+          // Cek jika URL mengandung referensi ke bucket profile_images
+          if (pathSegments.contains('profile_images')) {
+            // Cari nama file dari URL - biasanya segment terakhir
+            final fileName = pathSegments.last;
+
+            print('Mencoba menghapus gambar lama: $fileName');
+
+            // Hapus file dari storage
+            await Supabase.instance.client.storage
+                .from('profile_images')
+                .remove([fileName]);
+
+            print('Gambar lama berhasil dihapus');
+          } else {
+            // Jika tidak ada referensi file yang jelas, coba cara lain
+            // List semua gambar user berdasarkan ID
+            final listResult = await Supabase.instance.client.storage
+                .from('profile_images')
+                .list();
+
+            // Hapus semua file dengan awalan ID pengguna
+            final userFilePrefix = '${user.id}_';
+            for (var file in listResult) {
+              if (file.name.startsWith(userFilePrefix)) {
+                print('Menghapus gambar lama: ${file.name}');
+                await Supabase.instance.client.storage
+                    .from('profile_images')
+                    .remove([file.name]);
+              }
+            }
+          }
+        } catch (deleteError) {
+          print('Error menghapus gambar lama: $deleteError');
+          // Lanjutkan meskipun gagal menghapus
+        }
+      }
+
+      // Generate nama file unik menggunakan ID pengguna dan timestamp
+      final String fileExtension = path.extension(image.path);
+      final String fileName =
+          '${user.id}_${DateTime.now().millisecondsSinceEpoch}$fileExtension';
+
+      // Upload ke bucket profile_images
+      final File file = File(image.path);
+      await Supabase.instance.client.storage.from('profile_images').upload(
+          fileName, file,
+          fileOptions: const FileOptions(cacheControl: '3600', upsert: true));
+
+      print('Gambar profil berhasil diupload');
+
+      // Dapatkan URL untuk gambar yang baru diupload
+      final String imageUrl = await Supabase.instance.client.storage
+          .from('profile_images')
+          .createSignedUrl(fileName, 60 * 60); // URL berlaku 1 jam
+
+      // Update profil pengguna dengan URL gambar baru
+      await Supabase.instance.client
+          .from('users')
+          .update({'profile_image_url': imageUrl}).eq('id', user.id);
+
+      print('URL gambar profil diperbarui di database');
+
+      // Update state lokal
+      setState(() {
+        profileImageUrl = imageUrl;
+        profileImagePath =
+            fileName; // Simpan nama file untuk referensi di masa depan
+        isUploadingImage = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Profile image updated successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (error) {
+      print('Error uploading profile image: $error');
+
+      // More detailed error logging
+      if (error is StorageException) {
+        print('Storage error code: ${error.statusCode}');
+        print('Storage error message: ${error.message}');
+        print('Storage error details: ${error.error}');
+      }
+
+      setState(() {
+        isUploadingImage = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content:
+                Text('Failed to upload profile image: ${error.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -142,6 +397,82 @@ class _ProfilePageState extends State<ProfilePage> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Center(
+                          child: Column(
+                            children: [
+                              Stack(
+                                children: [
+                                  // Profile image
+                                  GestureDetector(
+                                    onTap: _uploadProfileImage,
+                                    child: CircleAvatar(
+                                      radius: 50,
+                                      backgroundColor:
+                                          WarnaSecondary.withOpacity(0.3),
+                                      backgroundImage: profileImageUrl != null
+                                          ? NetworkImage(
+                                              profileImageUrl!,
+                                              headers: {
+                                                'Authorization':
+                                                    'Bearer ${Supabase.instance.client.auth.currentSession?.accessToken}'
+                                              },
+                                            )
+                                          : null,
+                                      child: profileImageUrl == null
+                                          ? Icon(
+                                              Icons.person,
+                                              size: 70,
+                                              color: WarnaSecondary,
+                                            )
+                                          : null,
+                                    ),
+                                  ),
+                                  // Edit icon
+                                  Positioned(
+                                    bottom: 0,
+                                    right: 0,
+                                    child: Container(
+                                      padding: EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: WarnaSecondary,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Icon(
+                                        Icons.edit,
+                                        color: WarnaUtama,
+                                        size: 18,
+                                      ),
+                                    ),
+                                  ),
+                                  // Loading indicator
+                                  if (isUploadingImage)
+                                    Positioned.fill(
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withOpacity(0.5),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: Center(
+                                          child: CircularProgressIndicator(
+                                            color: WarnaSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                'Tap to change profile picture',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 12,
+                                ),
+                              ),
+                              SizedBox(height: 20),
+                            ],
+                          ),
+                        ),
                         Row(
                           children: [
                             Text(
@@ -392,5 +723,14 @@ class _ProfilePageState extends State<ProfilePage> {
         ),
       ),
     );
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    if (profileImagePath != null) {
+      _generateFreshImageUrl();
+    }
   }
 }
