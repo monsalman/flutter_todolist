@@ -139,7 +139,7 @@ class _KalenderPageState extends State<KalenderPage> {
         automaticallyImplyLeading: false,
         backgroundColor: WarnaUtama2,
         iconTheme: IconThemeData(color: Colors.white),
-        // title: Text('Kalender', style: TextStyle(color: Colors.white)),
+        toolbarHeight: 10,
       ),
       body: Container(
         color: WarnaUtama,
