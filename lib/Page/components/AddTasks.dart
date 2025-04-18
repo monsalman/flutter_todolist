@@ -107,6 +107,7 @@ class _AddTasksState extends State<AddTasks> {
               'created_at': DateTime.now().toIso8601String(),
               'due_date': taskDateTime.toIso8601String(),
               'time': timeString,
+              'date_completed': '',
             })
             .select()
             .single();

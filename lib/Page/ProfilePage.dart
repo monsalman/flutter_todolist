@@ -3,6 +3,7 @@ import 'package:flutter_todolist/Page/KategoriPage.dart';
 import '../Form/LoginPage.dart';
 import '../main.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/intl.dart';
 
 class ProfilePage extends StatefulWidget {
   final bool initiallyExpanded;
@@ -21,11 +22,14 @@ class _ProfilePageState extends State<ProfilePage> {
   String email = '';
   List<String> categories = [];
   bool isLoading = true;
+  int todayCompleted = 0;
+  int totalCompleted = 0;
 
   @override
   void initState() {
     super.initState();
     _loadUserData();
+    _loadCompletedTasksData();
   }
 
   Future<void> _loadUserData() async {
@@ -60,6 +64,48 @@ class _ProfilePageState extends State<ProfilePage> {
           isLoading = false;
         });
       }
+    }
+  }
+
+  Future<void> _loadCompletedTasksData() async {
+    try {
+      final User? user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        // Get all completed tasks
+        final completedTasks = await Supabase.instance.client
+            .from('tasks')
+            .select()
+            .eq('user_id', user.id)
+            .eq('is_completed', true);
+
+        // Get today's date in the format stored in Supabase
+        final today = DateTime.now();
+        final todayFormatted = DateFormat('yyyy-MM-dd').format(today);
+
+        // Count tasks completed today
+        int todayCount = 0;
+        for (var task in completedTasks) {
+          // Check if the task has a date_completed field
+          if (task['date_completed'] != null) {
+            // Extract just the date part for comparison
+            final completedDate =
+                task['date_completed'].toString().split('T')[0];
+            if (completedDate == todayFormatted) {
+              todayCount++;
+            }
+          }
+        }
+
+        if (mounted) {
+          setState(() {
+            totalCompleted = completedTasks.length;
+            todayCompleted = todayCount;
+          });
+        }
+      }
+    } catch (error) {
+      print('Error loading completed tasks: $error');
+      // Continue silently, keeping the default values (0)
     }
   }
 
@@ -138,6 +184,76 @@ class _ProfilePageState extends State<ProfilePage> {
                           ],
                         ),
                         SizedBox(height: 25),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Container(
+                                height: 100,
+                                padding: EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Today Completed',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 14,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      todayCompleted.toString(),
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            SizedBox(width: 16),
+                            Expanded(
+                              child: Container(
+                                height: 100,
+                                padding: EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      'Total Completed',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 14,
+                                      ),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                    SizedBox(height: 8),
+                                    Text(
+                                      totalCompleted.toString(),
+                                      style: TextStyle(
+                                        color: WarnaSecondary,
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: 16),
                         Container(
                           margin: EdgeInsets.symmetric(vertical: 16),
                           width: double.infinity,
@@ -159,7 +275,7 @@ class _ProfilePageState extends State<ProfilePage> {
                             child: Text(
                               'Manage Categories',
                               style: TextStyle(
-                                color: Colors.white70,
+                                color: WarnaSecondary,
                                 fontSize: 16,
                               ),
                             ),

@@ -139,10 +139,24 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
 
   Future<void> _updateTaskStatus(String taskId, bool isCompleted) async {
     try {
-      await Supabase.instance.client.from('tasks').update({
+      final updateData = {
         'is_completed': isCompleted,
         'updated_at': DateTime.now().toIso8601String(),
-      }).match({'id': taskId});
+      };
+
+      // If task is being marked as completed, add the completion date
+      if (isCompleted) {
+        updateData['date_completed'] = DateTime.now().toIso8601String();
+      } else {
+        // If task is being uncompleted, remove the completion date by setting to empty string
+        // Using null would require changing the Supabase column to allow nulls
+        updateData['date_completed'] = '';
+      }
+
+      await Supabase.instance.client
+          .from('tasks')
+          .update(updateData)
+          .match({'id': taskId});
 
       await _loadTasks();
 
@@ -477,6 +491,25 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                               color: Colors.white,
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Container(
+                            width: 24,
+                            height: 24,
+                            decoration: BoxDecoration(
+                              color: WarnaSecondary,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Text(
+                                '${completedTasks.length}',
+                                style: TextStyle(
+                                  color: WarnaUtama,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
                             ),
                           ),
                           SizedBox(width: 8),

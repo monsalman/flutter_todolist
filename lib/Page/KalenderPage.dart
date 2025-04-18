@@ -22,17 +22,20 @@ class EventMarker {
   });
 }
 
-class _KalenderPageState extends State<KalenderPage> {
+class _KalenderPageState extends State<KalenderPage>
+    with TickerProviderStateMixin {
   CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   Map<DateTime, List<dynamic>> _events = {};
   bool isCompletedExpanded = true;
+  bool isUncompletedExpanded = true;
   String? selectedCategory;
   DateTime? selectedDate;
   TimeOfDay? selectedTime;
   String? selectedPriority;
   List<String> categories = [];
+  final Duration _animationDuration = Duration(milliseconds: 300);
 
   @override
   void initState() {
@@ -229,22 +232,85 @@ class _KalenderPageState extends State<KalenderPage> {
                       child: Column(
                         children: [
                           // Uncompleted Tasks
-                          ListView.builder(
-                            shrinkWrap: true,
-                            physics: NeverScrollableScrollPhysics(),
-                            itemCount: _getEventsForDay(_selectedDay!)
-                                .where(
-                                    (task) => !(task['is_completed'] ?? false))
-                                .length,
-                            itemBuilder: (context, index) {
-                              final uncompletedTasks =
-                                  _getEventsForDay(_selectedDay!)
-                                      .where((task) =>
-                                          !(task['is_completed'] ?? false))
-                                      .toList();
-                              return _buildTaskCard(uncompletedTasks[index]);
-                            },
-                          ),
+                          if (_getEventsForDay(_selectedDay!)
+                              .where((task) => !(task['is_completed'] ?? false))
+                              .isNotEmpty) ...[
+                            InkWell(
+                              onTap: () {
+                                setState(() {
+                                  isUncompletedExpanded =
+                                      !isUncompletedExpanded;
+                                });
+                              },
+                              child: Padding(
+                                padding: EdgeInsets.only(bottom: 10, left: 10),
+                                child: Row(
+                                  children: [
+                                    Text(
+                                      'Tasks',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    Container(
+                                      width: 24,
+                                      height: 24,
+                                      decoration: BoxDecoration(
+                                        color: WarnaSecondary,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          '${_getEventsForDay(_selectedDay!).where((task) => !(task['is_completed'] ?? false)).length}',
+                                          style: TextStyle(
+                                            color: WarnaUtama,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    AnimatedRotation(
+                                      duration: _animationDuration,
+                                      turns: isUncompletedExpanded ? 0.5 : 0.0,
+                                      child: Icon(
+                                        Icons.keyboard_arrow_down,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            AnimatedCrossFade(
+                              firstChild: ListView.builder(
+                                shrinkWrap: true,
+                                physics: NeverScrollableScrollPhysics(),
+                                itemCount: _getEventsForDay(_selectedDay!)
+                                    .where((task) =>
+                                        !(task['is_completed'] ?? false))
+                                    .length,
+                                itemBuilder: (context, index) {
+                                  final uncompletedTasks =
+                                      _getEventsForDay(_selectedDay!)
+                                          .where((task) =>
+                                              !(task['is_completed'] ?? false))
+                                          .toList();
+                                  return _buildTaskCard(
+                                      uncompletedTasks[index]);
+                                },
+                              ),
+                              secondChild: Container(),
+                              crossFadeState: isUncompletedExpanded
+                                  ? CrossFadeState.showFirst
+                                  : CrossFadeState.showSecond,
+                              duration: _animationDuration,
+                            ),
+                          ],
                           // Completed Tasks Section
                           if (_getEventsForDay(_selectedDay!)
                               .where((task) => task['is_completed'] ?? false)
@@ -256,7 +322,8 @@ class _KalenderPageState extends State<KalenderPage> {
                                 });
                               },
                               child: Padding(
-                                padding: EdgeInsets.only(bottom: 10, left: 10),
+                                padding: EdgeInsets.only(
+                                    top: 10, bottom: 10, left: 10),
                                 child: Row(
                                   children: [
                                     Text(
@@ -268,18 +335,39 @@ class _KalenderPageState extends State<KalenderPage> {
                                       ),
                                     ),
                                     SizedBox(width: 8),
-                                    Icon(
-                                      isCompletedExpanded
-                                          ? Icons.keyboard_arrow_up
-                                          : Icons.keyboard_arrow_down,
-                                      color: Colors.white,
+                                    Container(
+                                      width: 24,
+                                      height: 24,
+                                      decoration: BoxDecoration(
+                                        color: WarnaSecondary,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          '${_getEventsForDay(_selectedDay!).where((task) => task['is_completed'] ?? false).length}',
+                                          style: TextStyle(
+                                            color: WarnaUtama,
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    SizedBox(width: 8),
+                                    AnimatedRotation(
+                                      duration: _animationDuration,
+                                      turns: isCompletedExpanded ? 0.5 : 0.0,
+                                      child: Icon(
+                                        Icons.keyboard_arrow_down,
+                                        color: Colors.white,
+                                      ),
                                     ),
                                   ],
                                 ),
                               ),
                             ),
-                            if (isCompletedExpanded)
-                              ListView.builder(
+                            AnimatedCrossFade(
+                              firstChild: ListView.builder(
                                 shrinkWrap: true,
                                 physics: NeverScrollableScrollPhysics(),
                                 itemCount: _getEventsForDay(_selectedDay!)
@@ -295,6 +383,12 @@ class _KalenderPageState extends State<KalenderPage> {
                                   return _buildTaskCard(completedTasks[index]);
                                 },
                               ),
+                              secondChild: Container(),
+                              crossFadeState: isCompletedExpanded
+                                  ? CrossFadeState.showFirst
+                                  : CrossFadeState.showSecond,
+                              duration: _animationDuration,
+                            ),
                           ],
                         ],
                       ),
@@ -544,10 +638,23 @@ class _KalenderPageState extends State<KalenderPage> {
 
   Future<void> _updateTaskStatus(String taskId, bool isCompleted) async {
     try {
-      await Supabase.instance.client.from('tasks').update({
+      final updateData = {
         'is_completed': isCompleted,
         'updated_at': DateTime.now().toIso8601String(),
-      }).match({'id': taskId});
+      };
+
+      // If task is being marked as completed, add the completion date
+      if (isCompleted) {
+        updateData['date_completed'] = DateTime.now().toIso8601String();
+      } else {
+        // If task is being uncompleted, remove the completion date
+        updateData['date_completed'] = '';
+      }
+
+      await Supabase.instance.client
+          .from('tasks')
+          .update(updateData)
+          .match({'id': taskId});
 
       await _loadEvents();
     } catch (e) {
