@@ -388,15 +388,31 @@ class _KalenderPageState extends State<KalenderPage> {
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                task['title'] ?? '',
-                style: TextStyle(
-                  color: textColor,
-                  fontSize: 16,
-                  decoration: isCompleted ? TextDecoration.lineThrough : null,
-                  decorationColor: checkboxColor,
-                  decorationThickness: 1.5,
-                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    task['title'] ?? '',
+                    style: TextStyle(
+                      color: textColor,
+                      fontSize: 16,
+                      decoration:
+                          isCompleted ? TextDecoration.lineThrough : null,
+                      decorationColor: checkboxColor,
+                      decorationThickness: 1.5,
+                    ),
+                  ),
+                  SizedBox(width: 4),
+                  if (task['priority'] != null)
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: _getPriorityColor(task['priority']),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                ],
               ),
               SizedBox(height: 4),
               Row(
@@ -410,34 +426,43 @@ class _KalenderPageState extends State<KalenderPage> {
                       ),
                     ),
                   if (task['time'] != null) SizedBox(width: 8),
-                  // Indikator prioritas dan icon
-                  if (task['priority'] != null)
-                    Container(
-                      width: 8,
-                      height: 8,
-                      margin: EdgeInsets.only(right: 4),
-                      decoration: BoxDecoration(
-                        color: _getPriorityColor(task['priority']),
-                        shape: BoxShape.circle,
+                  if (isTimeOverdue && !isCompleted)
+                    Text(
+                      _getOverdueText(task),
+                      style: TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 12,
                       ),
                     ),
+                  if (isTimeOverdue && !isCompleted) SizedBox(width: 8),
+                  // Icon indicators
                   if (task['subtasks'] != null &&
                       (task['subtasks'] as List).isNotEmpty)
                     Padding(
                       padding: EdgeInsets.only(right: 4),
                       child: Icon(Icons.checklist,
-                          color: Colors.white70, size: 14),
+                          color: isTimeOverdue && !isCompleted
+                              ? Colors.redAccent
+                              : Colors.white70,
+                          size: 14),
                     ),
                   if (task['notes'] != null &&
                       task['notes'].toString().isNotEmpty)
                     Padding(
                       padding: EdgeInsets.only(right: 4),
                       child: Icon(Icons.sticky_note_2,
-                          color: Colors.white70, size: 14),
+                          color: isTimeOverdue && !isCompleted
+                              ? Colors.redAccent
+                              : Colors.white70,
+                          size: 14),
                     ),
                   if (task['attachments'] != null &&
                       (task['attachments'] as List).isNotEmpty)
-                    Icon(Icons.attach_file, color: Colors.white70, size: 14),
+                    Icon(Icons.attach_file,
+                        color: isTimeOverdue && !isCompleted
+                            ? Colors.redAccent
+                            : Colors.white70,
+                        size: 14),
                 ],
               ),
             ],
@@ -482,6 +507,39 @@ class _KalenderPageState extends State<KalenderPage> {
       return taskDay.isBefore(today);
     }
     return false;
+  }
+
+  String _getOverdueText(Map<String, dynamic> task) {
+    final now = DateTime.now();
+    final taskDate = DateTime.parse(task['due_date']).toLocal();
+
+    if (task['time'] != null) {
+      final timeparts = task['time'].split(':');
+      final taskDateTime = DateTime(
+        taskDate.year,
+        taskDate.month,
+        taskDate.day,
+        int.parse(timeparts[0]),
+        int.parse(timeparts[1]),
+      );
+      final difference = now.difference(taskDateTime);
+      if (difference.inDays > 0) {
+        return "(${difference.inDays}d late)";
+      } else if (difference.inHours > 0) {
+        return "(${difference.inHours}h late)";
+      } else if (difference.inMinutes > 0) {
+        return "(${difference.inMinutes}m late)";
+      }
+    } else {
+      // If only date without time
+      final taskDay = DateTime(taskDate.year, taskDate.month, taskDate.day);
+      final today = DateTime(now.year, now.month, now.day);
+      final difference = today.difference(taskDay);
+      if (difference.inDays > 0) {
+        return "(${difference.inDays}d late)";
+      }
+    }
+    return "";
   }
 
   Future<void> _updateTaskStatus(String taskId, bool isCompleted) async {

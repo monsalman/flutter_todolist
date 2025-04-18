@@ -1666,21 +1666,20 @@ class _TaskDetailState extends State<TaskDetail> {
                 ),
               ),
               SizedBox(height: 5),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                mainAxisAlignment: MainAxisAlignment.start,
+              Wrap(
+                alignment: WrapAlignment.start,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing:
+                    10, // Horizontal spacing between title and priority button
                 children: [
-                  Flexible(
-                    child: Text(
-                      widget.task['title'] ?? '',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 40,
-                        fontWeight: FontWeight.bold,
-                      ),
+                  Text(
+                    widget.task['title'] ?? '',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 40,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  SizedBox(width: 8),
                   GestureDetector(
                     onTap: () {
                       setState(() {
@@ -1819,7 +1818,7 @@ class _TaskDetailState extends State<TaskDetail> {
                   ),
                 ],
               ),
-              SizedBox(height: 5),
+              SizedBox(height: 20),
               if (subtasks.isNotEmpty)
                 Text(
                   'Subtasks:',

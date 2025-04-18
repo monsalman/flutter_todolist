@@ -675,15 +675,30 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              task['title'] ?? '',
-              style: TextStyle(
-                color: textColor,
-                fontSize: 16,
-                decoration: isCompleted ? TextDecoration.lineThrough : null,
-                decorationColor: checkboxColor,
-                decorationThickness: 1.5,
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Text(
+                  task['title'] ?? '',
+                  style: TextStyle(
+                    color: textColor,
+                    fontSize: 16,
+                    decoration: isCompleted ? TextDecoration.lineThrough : null,
+                    decorationColor: checkboxColor,
+                    decorationThickness: 1.5,
+                  ),
+                ),
+                SizedBox(width: 4),
+                if (task['priority'] != null)
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: _getPriorityColor(task['priority']),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+              ],
             ),
             SizedBox(height: 4),
             Row(
@@ -721,25 +736,15 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                 // Icon indicators
                 Row(
                   children: [
-                    if (task['priority'] != null)
-                      Padding(
-                        padding: EdgeInsets.only(right: 4),
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: _getPriorityColor(task['priority']),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      ),
                     if (task['subtasks'] != null &&
                         (task['subtasks'] as List).isNotEmpty)
                       Padding(
                         padding: EdgeInsets.only(right: 4),
                         child: Icon(
                           Icons.checklist,
-                          color: dateTimeColor,
+                          color: isTimeOverdue && !isCompleted
+                              ? Colors.redAccent
+                              : dateTimeColor,
                           size: 14,
                         ),
                       ),
@@ -749,7 +754,9 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                         padding: EdgeInsets.only(right: 4),
                         child: Icon(
                           Icons.sticky_note_2,
-                          color: dateTimeColor,
+                          color: isTimeOverdue && !isCompleted
+                              ? Colors.redAccent
+                              : dateTimeColor,
                           size: 14,
                         ),
                       ),
@@ -757,7 +764,9 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                         (task['attachments'] as List).isNotEmpty)
                       Icon(
                         Icons.attach_file,
-                        color: dateTimeColor,
+                        color: isTimeOverdue && !isCompleted
+                            ? Colors.redAccent
+                            : dateTimeColor,
                         size: 14,
                       ),
                   ],
