@@ -364,12 +364,12 @@ class _KategoriPageState extends State<KategoriPage> {
                                           builder: (context) => AlertDialog(
                                             backgroundColor: WarnaUtama,
                                             title: Text(
-                                              'Hapus Kategori',
+                                              'Delete Kategori',
                                               style: TextStyle(
                                                   color: Colors.white),
                                             ),
                                             content: Text(
-                                              'Yakin ingin menghapus kategori ini?',
+                                              'Are you sure you want to delete this Kategori?',
                                               style: TextStyle(
                                                   color: Colors.white70),
                                             ),
@@ -378,7 +378,7 @@ class _KategoriPageState extends State<KategoriPage> {
                                                 onPressed: () =>
                                                     Navigator.pop(context),
                                                 child: Text(
-                                                  'Batal',
+                                                  'Cancel',
                                                   style: TextStyle(
                                                       color: WarnaSecondary),
                                                 ),
@@ -387,7 +387,7 @@ class _KategoriPageState extends State<KategoriPage> {
                                                 onPressed: () =>
                                                     _deleteCategory(index),
                                                 child: Text(
-                                                  'Hapus',
+                                                  'Delete',
                                                   style: TextStyle(
                                                       color: Colors.red),
                                                 ),

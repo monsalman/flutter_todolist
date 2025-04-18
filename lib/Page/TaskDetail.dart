@@ -1550,6 +1550,12 @@ class _TaskDetailState extends State<TaskDetail> {
           icon: Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.delete_outline, color: Colors.white),
+            onPressed: _confirmDeleteTask,
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -2341,5 +2347,135 @@ class _TaskDetailState extends State<TaskDetail> {
         ),
       ),
     );
+  }
+
+  // Add method to confirm and delete task
+  Future<void> _confirmDeleteTask() async {
+    // Show confirmation dialog
+    bool? confirmDelete = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            decoration: BoxDecoration(
+              color: WarnaUtama,
+              borderRadius: BorderRadius.circular(16),
+            ),
+            padding: EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: Colors.red,
+                  size: 55,
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Delete Task',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'Are you sure you want to delete this task? This action cannot be undone.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                  ),
+                ),
+                SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                    ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: () => Navigator.pop(context, true),
+                      child: Text(
+                        'Delete',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+    // If user confirmed deletion
+    if (confirmDelete == true) {
+      try {
+        // First delete all attachments from storage
+        if (_attachmentPaths.isNotEmpty) {
+          await Supabase.instance.client.storage
+              .from('attachments')
+              .remove(_attachmentPaths);
+        }
+
+        // Then delete the task
+        await Supabase.instance.client
+            .from('tasks')
+            .delete()
+            .eq('id', widget.task['id']);
+
+        // Call the callback to update the parent screen
+        widget.onTaskUpdated();
+
+        // Show success message and navigate back
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Task deleted successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        // Cancel any scheduled notifications
+        if (widget.task['due_date'] != null && widget.task['time'] != null) {
+          try {
+            final notificationId = _getNotificationId(widget.task['id']);
+            await _notificationService.cancelNotification(notificationId);
+          } catch (e) {
+            print('Error cancelling notification: $e');
+          }
+        }
+
+        // Return to previous screen
+        Navigator.pop(context);
+      } catch (error) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error deleting task: ${error.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }
