@@ -3,6 +3,7 @@ import 'package:flutter_todolist/Service/NotificationService.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../main.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_todolist/Page/KategoriPage.dart';
 
 class AddTasks extends StatefulWidget {
   final DateTime? initialDate;
@@ -852,11 +853,23 @@ class _AddTasksState extends State<AddTasks> {
                                 ],
                               ).then((selectedValue) {
                                 setState(() {
-                                  if (selectedValue != null &&
-                                      selectedValue != 'add_category') {
-                                    selectedCategory = selectedValue;
-                                    widget.onCategorySelected
-                                        ?.call(selectedValue);
+                                  if (selectedValue != null) {
+                                    if (selectedValue == 'add_category') {
+                                      // Navigate to KategoriPage
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => KategoriPage(),
+                                        ),
+                                      ).then((_) {
+                                        // Reload categories when returning from KategoriPage
+                                        _loadCategories();
+                                      });
+                                    } else {
+                                      selectedCategory = selectedValue;
+                                      widget.onCategorySelected
+                                          ?.call(selectedValue);
+                                    }
                                   }
                                 });
                               });
