@@ -55,12 +55,44 @@ class _ProfilePageState extends State<ProfilePage> {
             username = data['username'] ?? '';
             email = user.email ?? '';
             categories = List<String>.from(data['categories'] ?? []);
-            profileImagePath = data['profile_image_path'];
 
-            if (profileImagePath != null) {
-              _generateFreshImageUrl();
-            } else {
-              profileImageUrl = data['profile_image_url'];
+            // Handle profile image
+            if (data['profile_image_url'] != null) {
+              final String storedValue = data['profile_image_url'];
+
+              // Check if the stored value is a full URL or just a filename
+              if (storedValue.startsWith('http')) {
+                // It's a URL, extract the filename
+                try {
+                  final uri = Uri.parse(storedValue);
+                  final pathSegments = uri.pathSegments;
+
+                  for (var segment in pathSegments) {
+                    if (segment.contains(user.id) ||
+                        segment.endsWith('.jpg') ||
+                        segment.endsWith('.png') ||
+                        segment.endsWith('.jpeg')) {
+                      profileImagePath = segment;
+                      break;
+                    }
+                  }
+
+                  // If filename was extracted, generate fresh URL
+                  if (profileImagePath != null) {
+                    _generateFreshImageUrl();
+                  } else {
+                    // If extraction failed, use the URL directly
+                    profileImageUrl = storedValue;
+                  }
+                } catch (e) {
+                  print('Error parsing URL: $e');
+                  profileImageUrl = storedValue;
+                }
+              } else {
+                // It's already just a filename, use it to generate fresh URL
+                profileImagePath = storedValue;
+                _generateFreshImageUrl();
+              }
             }
 
             isLoading = false;
@@ -68,6 +100,7 @@ class _ProfilePageState extends State<ProfilePage> {
         }
       }
     } catch (error) {
+      print('Error loading user data: $error');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -130,7 +163,7 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final freshUrl = await Supabase.instance.client.storage
           .from('profile_images')
-          .createSignedUrl(profileImagePath!, 60 * 60); // Berlaku 1 jam
+          .createSignedUrl(profileImagePath!, 60 * 60); // Valid for 1 hour
 
       if (mounted) {
         setState(() {
@@ -138,7 +171,7 @@ class _ProfilePageState extends State<ProfilePage> {
         });
       }
     } catch (error) {
-      print('Error membuat URL gambar baru: $error');
+      print('Error generating fresh image URL: $error');
     }
   }
 
@@ -244,47 +277,61 @@ class _ProfilePageState extends State<ProfilePage> {
       final User? user = Supabase.instance.client.auth.currentUser;
       if (user == null) throw Exception('User not authenticated');
 
-      // Ambil data user untuk mendapatkan URL gambar profil saat ini
+      // Get user data to check for existing profile image
       final userData = await Supabase.instance.client
           .from('users')
           .select('profile_image_url')
           .eq('id', user.id)
           .single();
 
-      final currentImageUrl = userData['profile_image_url'] as String?;
+      final currentValue = userData['profile_image_url'] as String?;
 
-      // Hapus gambar lama berdasarkan URL jika ada
-      if (currentImageUrl != null && currentImageUrl.isNotEmpty) {
+      // Delete old image if exists
+      if (currentValue != null && currentValue.isNotEmpty) {
         try {
-          // Ekstrak nama file dari URL
-          final uri = Uri.parse(currentImageUrl);
-          final pathSegments = uri.pathSegments;
+          String? fileToDelete;
 
-          // Cek jika URL mengandung referensi ke bucket profile_images
-          if (pathSegments.contains('profile_images')) {
-            // Cari nama file dari URL - biasanya segment terakhir
-            final fileName = pathSegments.last;
+          // Check if the value is a URL or filename
+          if (currentValue.startsWith('http')) {
+            // It's a URL, extract the filename
+            try {
+              final uri = Uri.parse(currentValue);
+              final pathSegments = uri.pathSegments;
 
-            print('Mencoba menghapus gambar lama: $fileName');
+              for (var segment in pathSegments) {
+                if (segment.contains(user.id) ||
+                    segment.endsWith('.jpg') ||
+                    segment.endsWith('.png') ||
+                    segment.endsWith('.jpeg')) {
+                  fileToDelete = segment;
+                  break;
+                }
+              }
+            } catch (e) {
+              print('Error parsing URL: $e');
+            }
+          } else {
+            // It's already just a filename
+            fileToDelete = currentValue;
+          }
 
-            // Hapus file dari storage
+          // Delete the file if we found a valid filename
+          if (fileToDelete != null) {
+            print('Attempting to delete old image: $fileToDelete');
             await Supabase.instance.client.storage
                 .from('profile_images')
-                .remove([fileName]);
-
-            print('Gambar lama berhasil dihapus');
+                .remove([fileToDelete]);
+            print('Old image successfully deleted');
           } else {
-            // Jika tidak ada referensi file yang jelas, coba cara lain
-            // List semua gambar user berdasarkan ID
+            // Fallback: try to list and find files with user's ID
             final listResult = await Supabase.instance.client.storage
                 .from('profile_images')
                 .list();
 
-            // Hapus semua file dengan awalan ID pengguna
             final userFilePrefix = '${user.id}_';
             for (var file in listResult) {
               if (file.name.startsWith(userFilePrefix)) {
-                print('Menghapus gambar lama: ${file.name}');
+                print('Deleting old image: ${file.name}');
                 await Supabase.instance.client.storage
                     .from('profile_images')
                     .remove([file.name]);
@@ -292,41 +339,41 @@ class _ProfilePageState extends State<ProfilePage> {
             }
           }
         } catch (deleteError) {
-          print('Error menghapus gambar lama: $deleteError');
-          // Lanjutkan meskipun gagal menghapus
+          print('Error deleting old image: $deleteError');
+          // Continue even if deletion fails
         }
       }
 
-      // Generate nama file unik menggunakan ID pengguna dan timestamp
+      // Generate unique filename using user ID and timestamp
       final String fileExtension = path.extension(image.path);
       final String fileName =
           '${user.id}_${DateTime.now().millisecondsSinceEpoch}$fileExtension';
 
-      // Upload ke bucket profile_images
+      // Upload to profile_images bucket
       final File file = File(image.path);
       await Supabase.instance.client.storage.from('profile_images').upload(
           fileName, file,
           fileOptions: const FileOptions(cacheControl: '3600', upsert: true));
 
-      print('Gambar profil berhasil diupload');
+      print('Profile image successfully uploaded');
 
-      // Dapatkan URL untuk gambar yang baru diupload
-      final String imageUrl = await Supabase.instance.client.storage
+      // Generate a signed URL for immediate display (not for storage)
+      final String signedUrl = await Supabase.instance.client.storage
           .from('profile_images')
-          .createSignedUrl(fileName, 60 * 60); // URL berlaku 1 jam
+          .createSignedUrl(fileName, 60 * 60); // Valid for 1 hour
 
-      // Update profil pengguna dengan URL gambar baru
+      // Update user profile with just the filename
       await Supabase.instance.client
           .from('users')
-          .update({'profile_image_url': imageUrl}).eq('id', user.id);
+          .update({'profile_image_url': fileName}).eq('id', user.id);
 
-      print('URL gambar profil diperbarui di database');
+      print('Profile image filename stored in database');
 
-      // Update state lokal
+      // Update local state
       setState(() {
-        profileImageUrl = imageUrl;
+        profileImageUrl = signedUrl; // Use the signed URL for display
         profileImagePath =
-            fileName; // Simpan nama file untuk referensi di masa depan
+            fileName; // Store the filename for future token generation
         isUploadingImage = false;
       });
 
@@ -410,13 +457,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                       backgroundColor:
                                           WarnaSecondary.withOpacity(0.3),
                                       backgroundImage: profileImageUrl != null
-                                          ? NetworkImage(
-                                              profileImageUrl!,
-                                              headers: {
-                                                'Authorization':
-                                                    'Bearer ${Supabase.instance.client.auth.currentSession?.accessToken}'
-                                              },
-                                            )
+                                          ? NetworkImage(profileImageUrl!)
                                           : null,
                                       child: profileImageUrl == null
                                           ? Icon(
@@ -676,7 +717,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                                   .showSnackBar(
                                                 SnackBar(
                                                   content: Text(
-                                                      // 'Error logging out: ${error.toString()}'),
                                                       'Logout gagal Silahkan Coba Lagi!'),
                                                   backgroundColor: Colors.red,
                                                 ),
