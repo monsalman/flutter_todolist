@@ -145,6 +145,11 @@ class NotificationService {
     await _supabaseNotification.cancelNotification(id.toString());
   }
 
+  // Menambahkan metode baru untuk membatalkan notifikasi berdasarkan task_id
+  Future<void> cancelNotificationByTaskId(String taskId) async {
+    await _supabaseNotification.cancelNotificationByTaskId(taskId);
+  }
+
   Future<void> showTestNotification() async {
     try {
       final AndroidNotificationChannel channel = AndroidNotificationChannel(

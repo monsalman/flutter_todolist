@@ -43,6 +43,18 @@ class _TaskDetailState extends State<TaskDetail> {
   bool _isUploading = false;
   final NotificationService _notificationService = NotificationService();
   final GlobalKey _priorityKey = GlobalKey();
+  // Define default reminder time (in minutes)
+  int _defaultReminderMinutes = 15;
+  // List of reminder options in minutes
+  final List<int> _reminderOptions = [
+    5,
+    10,
+    15,
+    30,
+    60,
+    120,
+    1440
+  ]; // 1440 = 24 hours
 
   @override
   void initState() {
@@ -502,15 +514,12 @@ class _TaskDetailState extends State<TaskDetail> {
           existingTime?.minute ?? 0,
         );
 
-        // Konversi ke UTC
-        final utcDateTime = localDateTime.toUtc();
-
-        // Format tanggal untuk disimpan
+        // Format tanggal lokal untuk disimpan (tanpa konversi UTC)
         final dateString =
-            "${utcDateTime.year}-${utcDateTime.month.toString().padLeft(2, '0')}-${utcDateTime.day.toString().padLeft(2, '0')}";
+            "${result.year}-${result.month.toString().padLeft(2, '0')}-${result.day.toString().padLeft(2, '0')}";
 
         print('Local date selected: $localDateTime');
-        print('UTC date to save: $dateString');
+        print('Date to save: $dateString');
 
         await Supabase.instance.client.from('tasks').update({
           'due_date': dateString,
@@ -521,45 +530,8 @@ class _TaskDetailState extends State<TaskDetail> {
           widget.task['due_date'] = dateString;
         });
 
-        // Schedule notification if both date and time are set
-        if (widget.task['time'] != null) {
-          final time = widget.task['time'].split(':');
-          final scheduledDateTime = DateTime(
-            result.year,
-            result.month,
-            result.day,
-            int.parse(time[0]),
-            int.parse(time[1]),
-          );
-
-          // Konversi ke UTC untuk notifikasi
-          final scheduledDateTimeUtc = scheduledDateTime.toUtc();
-
-          if (scheduledDateTime.isAfter(DateTime.now())) {
-            try {
-              final notificationId = _getNotificationId(widget.task['id']);
-
-              await _notificationService.scheduleTaskNotification(
-                id: notificationId,
-                title: widget.task['title'],
-                scheduledDate: scheduledDateTimeUtc,
-                taskId: widget.task['id'],
-              );
-
-              print(
-                  'Scheduling notification for local time: $scheduledDateTime');
-              print('Saving to Supabase in UTC: $scheduledDateTimeUtc');
-            } catch (e) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content:
-                      Text('Failed to schedule notification: ${e.toString()}'),
-                  backgroundColor: Colors.red,
-                ),
-              );
-            }
-          }
-        }
+        // Schedule notification with the new date
+        await _scheduleNotification();
 
         widget.onTaskUpdated();
 
@@ -939,34 +911,8 @@ class _TaskDetailState extends State<TaskDetail> {
               localTimeString; // Update state dengan waktu lokal
         });
 
-        // Hanya konversi ke UTC untuk notifikasi
-        if (widget.task['due_date'] != null) {
-          final date = DateTime.parse(widget.task['due_date']);
-          final localDateTime = DateTime(
-            date.year,
-            date.month,
-            date.day,
-            result.hour, // Gunakan jam lokal (20:41)
-            result.minute,
-          );
-
-          // Konversi ke UTC hanya untuk notifikasi
-          final utcDateTime = localDateTime.toUtc(); // Ini akan jadi 13:41 UTC
-
-          if (localDateTime.isAfter(DateTime.now())) {
-            try {
-              final notificationId = _getNotificationId(widget.task['id']);
-              await _notificationService.scheduleTaskNotification(
-                id: notificationId,
-                title: widget.task['title'],
-                scheduledDate: utcDateTime, // Kirim waktu UTC ke notifikasi
-                taskId: widget.task['id'],
-              );
-            } catch (e) {
-              // ... handle error ...
-            }
-          }
-        }
+        // Schedule notification with the updated time
+        await _scheduleNotification();
 
         widget.onTaskUpdated();
 
@@ -1046,23 +992,20 @@ class _TaskDetailState extends State<TaskDetail> {
               onSelectedItemChanged: (index) => onChanged(index + minValue),
               children: List<Widget>.generate(
                 maxValue - minValue + 1,
-                (index) {
-                  final itemValue = index + minValue;
-                  return Container(
-                    height: 50,
-                    alignment: Alignment.center,
-                    child: Text(
-                      format(itemValue),
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: itemValue == value
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                      ),
+                (index) => Container(
+                  height: 50,
+                  alignment: Alignment.center,
+                  child: Text(
+                    format(index + minValue),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: index + minValue == value
+                          ? FontWeight.bold
+                          : FontWeight.normal,
                     ),
-                  );
-                },
+                  ),
+                ),
               ),
             ),
           ],
@@ -1579,6 +1522,91 @@ class _TaskDetailState extends State<TaskDetail> {
     }
   }
 
+  // Update the notification scheduling to use the reminder time
+  Future<void> _scheduleNotification() async {
+    if (widget.task['due_date'] == null || widget.task['time'] == null) {
+      // Jika task tidak memiliki due date atau time, pastikan notifikasi sebelumnya dibatalkan
+      try {
+        // Gunakan cancelNotificationByTaskId yang baru
+        await _notificationService
+            .cancelNotificationByTaskId(widget.task['id']);
+        print(
+            'Cancelled existing notifications for task: ${widget.task['id']}');
+      } catch (e) {
+        print('Error cancelling notifications: $e');
+      }
+      return;
+    }
+
+    try {
+      // Selalu batalkan notifikasi yang ada untuk task ini terlebih dahulu
+      // untuk memastikan tidak ada notifikasi duplikat
+      await _notificationService.cancelNotificationByTaskId(widget.task['id']);
+      print('Cancelled existing notifications for task: ${widget.task['id']}');
+
+      final time = widget.task['time'].split(':');
+      final date = DateTime.parse(widget.task['due_date']);
+
+      // Create scheduled date/time
+      final scheduledDateTime = DateTime(
+        date.year,
+        date.month,
+        date.day,
+        int.parse(time[0]),
+        int.parse(time[1]),
+      );
+
+      // Check if we have a reminder_before setting
+      int reminderMinutes = _defaultReminderMinutes;
+      if (widget.task['reminder_before'] != null) {
+        try {
+          reminderMinutes = int.parse(widget.task['reminder_before']);
+        } catch (e) {
+          print('Error parsing reminder minutes: $e');
+        }
+      }
+
+      // Calculate reminder time (task time minus reminder minutes)
+      final reminderDateTime =
+          scheduledDateTime.subtract(Duration(minutes: reminderMinutes));
+      final now = DateTime.now();
+
+      // Only schedule if reminder time is in the future
+      if (reminderDateTime.isAfter(now)) {
+        final notificationId = _getNotificationId(widget.task['id']);
+        await _notificationService.scheduleTaskNotification(
+          id: notificationId,
+          title: widget.task['title'],
+          scheduledDate: reminderDateTime.toUtc(),
+          taskId: widget.task['id'],
+        );
+
+        print('Scheduled new notification for: ${widget.task['title']}');
+        print('Task time: $scheduledDateTime');
+        print('Current time: $now');
+        print(
+            'Reminder time: $reminderDateTime (${reminderMinutes} minutes before)');
+      } else {
+        print(
+            'Reminder time is in the past, not scheduling: $reminderDateTime');
+        print('Current time: $now');
+
+        // Show a message to the user if the reminder time is in the past
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content:
+                  Text('Cannot set reminder for the past. Task is too soon!'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('Error scheduling notification: $e');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final sortedSubtasks = _getSortedSubtasks();
@@ -2074,6 +2102,46 @@ class _TaskDetailState extends State<TaskDetail> {
                       ),
                       onTap: () => _selectTime(context),
                     ),
+
+                    // Only show Reminder option if time is set
+                    if (widget.task['time'] != null) ...[
+                      Divider(height: 1, color: WarnaUtama.withOpacity(0.3)),
+
+                      // Reminder At Row
+                      ListTile(
+                        leading: Icon(
+                          Icons.notifications_active,
+                          color: Colors.white,
+                        ),
+                        title: Text(
+                          'Reminder At',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                          ),
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              widget.task['reminder_before'] != null
+                                  ? _formatReminderTime(
+                                      widget.task['reminder_before'])
+                                  : '-',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Icon(
+                              Icons.chevron_right,
+                              color: Colors.white,
+                            ),
+                          ],
+                        ),
+                        onTap: () => _selectReminderTime(context),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -2495,6 +2563,16 @@ class _TaskDetailState extends State<TaskDetail> {
               .remove(_attachmentPaths);
         }
 
+        // Cancel any scheduled notifications
+        if (widget.task['due_date'] != null && widget.task['time'] != null) {
+          try {
+            await _notificationService
+                .cancelNotificationByTaskId(widget.task['id']);
+          } catch (e) {
+            print('Error cancelling notification: $e');
+          }
+        }
+
         // Then delete the task
         await Supabase.instance.client
             .from('tasks')
@@ -2512,16 +2590,6 @@ class _TaskDetailState extends State<TaskDetail> {
           ),
         );
 
-        // Cancel any scheduled notifications
-        if (widget.task['due_date'] != null && widget.task['time'] != null) {
-          try {
-            final notificationId = _getNotificationId(widget.task['id']);
-            await _notificationService.cancelNotification(notificationId);
-          } catch (e) {
-            print('Error cancelling notification: $e');
-          }
-        }
-
         // Return to previous screen
         Navigator.pop(context);
       } catch (error) {
@@ -2531,6 +2599,236 @@ class _TaskDetailState extends State<TaskDetail> {
             backgroundColor: Colors.red,
           ),
         );
+      }
+    }
+  }
+
+  // Add method to format reminder time
+  String _formatReminderTime(String? reminderTime) {
+    if (reminderTime == null || reminderTime.isEmpty) return '-';
+
+    try {
+      final minutes = int.parse(reminderTime);
+      if (minutes <= 0) return 'At time of event';
+
+      if (minutes >= 1440) {
+        final days = minutes ~/ 1440;
+        return '$days day${days > 1 ? 's' : ''} before';
+      } else if (minutes >= 60) {
+        final hours = minutes ~/ 60;
+        final remainingMinutes = minutes % 60;
+        if (remainingMinutes == 0) {
+          return '$hours hour${hours > 1 ? 's' : ''} before';
+        } else {
+          return '$hours h ${remainingMinutes} min before';
+        }
+      } else {
+        return '$minutes minute${minutes > 1 ? 's' : ''} before';
+      }
+    } catch (e) {
+      return '-';
+    }
+  }
+
+  // Add method to handle selecting reminder time
+  Future<void> _selectReminderTime(BuildContext context) async {
+    // Periksa apakah tugas terlalu dekat dengan waktu sekarang
+    List<int> availableOptions = [];
+
+    if (widget.task['due_date'] != null && widget.task['time'] != null) {
+      try {
+        final time = widget.task['time'].split(':');
+        final date = DateTime.parse(widget.task['due_date']);
+
+        final taskDateTime = DateTime(
+          date.year,
+          date.month,
+          date.day,
+          int.parse(time[0]),
+          int.parse(time[1]),
+        );
+
+        final now = DateTime.now();
+        final minutesUntilTask = taskDateTime.difference(now).inMinutes;
+
+        // Hanya tampilkan opsi reminder yang masih valid (waktunya belum lewat)
+        availableOptions = _reminderOptions
+            .where((minutes) => minutes < minutesUntilTask)
+            .toList();
+
+        if (availableOptions.isEmpty) {
+          // Tampilkan pesan peringatan
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Task is too soon! Cannot set a reminder.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+
+          return; // Keluar dari metode
+        }
+      } catch (e) {
+        print('Error checking available reminder options: $e');
+      }
+    }
+
+    final result = await showDialog<int>(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.symmetric(horizontal: 20),
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              return Container(
+                decoration: BoxDecoration(
+                  color: WarnaUtama,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        'Remind Me',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+
+                    // Reminder options
+                    Container(
+                      constraints: BoxConstraints(
+                        maxHeight: MediaQuery.of(context).size.height * 0.5,
+                      ),
+                      child: SingleChildScrollView(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: Column(
+                            children: [
+                              for (final minutes in availableOptions.isEmpty
+                                  ? _reminderOptions
+                                  : availableOptions)
+                                Container(
+                                  width: double.infinity,
+                                  margin: EdgeInsets.only(bottom: 8),
+                                  child: ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: WarnaUtama2,
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      padding: EdgeInsets.symmetric(
+                                          vertical: 12, horizontal: 16),
+                                    ),
+                                    onPressed: () =>
+                                        Navigator.pop(context, minutes),
+                                    child: Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Text(
+                                        _formatReminderTime(minutes.toString()),
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+
+                    // Cancel button
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: TextButton(
+                        onPressed: () => Navigator.pop(context, null),
+                        child: Text(
+                          'Cancel',
+                          style: TextStyle(
+                            color: WarnaSecondary,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+
+    if (result != null) {
+      try {
+        // Periksa apakah reminder masih valid (masih di masa depan)
+        final time = widget.task['time'].split(':');
+        final date = DateTime.parse(widget.task['due_date']);
+
+        final taskDateTime = DateTime(
+          date.year,
+          date.month,
+          date.day,
+          int.parse(time[0]),
+          int.parse(time[1]),
+        );
+
+        final reminderDateTime =
+            taskDateTime.subtract(Duration(minutes: result));
+        final now = DateTime.now();
+
+        if (reminderDateTime.isBefore(now)) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'Cannot set reminder for the past. Please choose another time.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+          return;
+        }
+
+        await Supabase.instance.client.from('tasks').update({
+          'reminder_before': result.toString(),
+          'updated_at': DateTime.now().toIso8601String(),
+        }).eq('id', widget.task['id']);
+
+        setState(() {
+          widget.task['reminder_before'] = result.toString();
+        });
+
+        // Update the scheduled notification with the new reminder time
+        await _scheduleNotification();
+
+        widget.onTaskUpdated();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Reminder updated successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } catch (error) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error updating reminder: ${error.toString()}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     }
   }

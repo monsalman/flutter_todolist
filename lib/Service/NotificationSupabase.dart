@@ -219,10 +219,41 @@ class SupabaseNotificationService {
 
   Future<void> cancelNotification(String notificationId) async {
     try {
+      // Mencoba menghapus notifikasi berdasarkan id
       await _supabase.from('notifications').delete().eq('id', notificationId);
       await _localNotifications.cancel(notificationId.hashCode);
     } catch (e) {
       print('Error canceling notification: $e');
+      rethrow;
+    }
+  }
+
+  // Tambahkan metode baru untuk menghapus notifikasi berdasarkan task_id
+  Future<void> cancelNotificationByTaskId(String taskId) async {
+    try {
+      final user = _supabase.auth.currentUser;
+      if (user == null) return;
+
+      // Cari notifikasi yang terkait dengan task_id ini
+      final notifications = await _supabase
+          .from('notifications')
+          .select()
+          .eq('task_id', taskId)
+          .eq('user_id', user.id);
+
+      // Hapus notifikasi lokal dan di database
+      for (final notification in notifications) {
+        final String id = notification['id'];
+        await _localNotifications.cancel(id.hashCode);
+        print(
+            'Cancelled local notification for task: $taskId, notification id: $id');
+      }
+
+      // Hapus semua notifikasi dengan task_id tersebut
+      await _supabase.from('notifications').delete().eq('task_id', taskId);
+      print('Deleted all notifications for task: $taskId');
+    } catch (e) {
+      print('Error canceling notification by task_id: $e');
       rethrow;
     }
   }
