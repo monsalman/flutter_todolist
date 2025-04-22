@@ -34,12 +34,23 @@ class _AddTasksState extends State<AddTasks> {
   final GlobalKey _priorityKey = GlobalKey();
   List<String> categories = [];
   bool _dateManuallySelected = false;
+  bool _taskAddedManually = false;
 
   @override
   void initState() {
     super.initState();
     selectedDate = DateTime.now();
     _loadCategories();
+  }
+
+  @override
+  void dispose() {
+    // Refresh parent page when the bottom sheet is closed without adding a task
+    // This ensures categories and task list are refreshed
+    if (!_taskAddedManually) {
+      widget.onTaskAdded();
+    }
+    super.dispose();
   }
 
   Future<void> _loadCategories() async {
@@ -129,6 +140,7 @@ class _AddTasksState extends State<AddTasks> {
           print('Notification scheduled in UTC: $notificationDateTime');
         }
 
+        _taskAddedManually = true;
         widget.onTaskAdded();
 
         if (mounted) {
@@ -728,442 +740,457 @@ class _AddTasksState extends State<AddTasks> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.3,
-      decoration: BoxDecoration(
-        color: WarnaUtama,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
+    return WillPopScope(
+      onWillPop: () async {
+        // Refresh parent page when bottom sheet is closed via back button or gesture
+        // This ensures categories and task list are refreshed if user exits without adding task
+        if (!_taskAddedManually) {
+          widget.onTaskAdded();
+        }
+        return true;
+      },
+      child: Container(
+        height: MediaQuery.of(context).size.height * 0.3,
+        decoration: BoxDecoration(
+          color: WarnaUtama,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(20),
+            topRight: Radius.circular(20),
+          ),
         ),
-      ),
-      padding: EdgeInsets.only(left: 16, right: 16, top: 20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Form(
-            key: _formKey,
-            child: Column(
-              children: [
-                TextFormField(
-                  controller: _taskController,
-                  cursorColor: WarnaSecondary,
-                  autofocus: true,
-                  style: TextStyle(
-                    color: WarnaSecondary,
-                    fontSize: 16,
-                  ),
-                  decoration: InputDecoration(
-                    labelText: 'Add New Task',
-                    labelStyle: TextStyle(
+        padding: EdgeInsets.only(left: 16, right: 16, top: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  TextFormField(
+                    controller: _taskController,
+                    cursorColor: WarnaSecondary,
+                    autofocus: true,
+                    style: TextStyle(
                       color: WarnaSecondary,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide(color: WarnaSecondary),
+                    decoration: InputDecoration(
+                      labelText: 'Add New Task',
+                      labelStyle: TextStyle(
+                        color: WarnaSecondary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide(color: WarnaSecondary),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide:
+                            BorderSide(color: WarnaSecondary, width: 0.5),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(15),
+                        borderSide: BorderSide(color: WarnaSecondary, width: 1),
+                      ),
+                      filled: true,
+                      fillColor: WarnaUtama,
+                      prefixIcon: Icon(Icons.task_alt, color: WarnaSecondary),
                     ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide(color: WarnaSecondary, width: 0.5),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide(color: WarnaSecondary, width: 1),
-                    ),
-                    filled: true,
-                    fillColor: WarnaUtama,
-                    prefixIcon: Icon(Icons.task_alt, color: WarnaSecondary),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a task';
+                      }
+                      return null;
+                    },
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter a task';
-                    }
-                    return null;
-                  },
-                ),
-                SizedBox(height: 10),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 4),
-                  child: Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: [
-                      Container(
-                        key: _categoryKey,
-                        height: 36,
-                        padding: EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: WarnaUtama2,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: GestureDetector(
-                          onTap: () {
-                            final RenderBox? button =
-                                _categoryKey.currentContext?.findRenderObject()
-                                    as RenderBox?;
-                            if (button != null) {
-                              final position =
-                                  button.localToGlobal(Offset.zero);
-                              final size = button.size;
+                  SizedBox(height: 10),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4),
+                    child: Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        Container(
+                          key: _categoryKey,
+                          height: 36,
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: WarnaUtama2,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: GestureDetector(
+                            onTap: () {
+                              final RenderBox? button = _categoryKey
+                                  .currentContext
+                                  ?.findRenderObject() as RenderBox?;
+                              if (button != null) {
+                                final position =
+                                    button.localToGlobal(Offset.zero);
+                                final size = button.size;
 
-                              showMenu(
-                                context: context,
-                                position: RelativeRect.fromLTRB(
-                                  position.dx,
-                                  position.dy - (categories.length + 1) * 55.0,
-                                  position.dx + size.width,
-                                  position.dy + size.height,
-                                ),
-                                color: WarnaUtama2,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                elevation: 8,
-                                items: [
-                                  ...categories.map(
-                                    (category) => PopupMenuItem(
-                                      value: category,
-                                      child: Text(
-                                        category,
-                                        style: TextStyle(color: Colors.white70),
+                                showMenu(
+                                  context: context,
+                                  position: RelativeRect.fromLTRB(
+                                    position.dx,
+                                    position.dy -
+                                        (categories.length + 1) * 55.0,
+                                    position.dx + size.width,
+                                    position.dy + size.height,
+                                  ),
+                                  color: WarnaUtama2,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  elevation: 8,
+                                  items: [
+                                    ...categories.map(
+                                      (category) => PopupMenuItem(
+                                        value: category,
+                                        child: Text(
+                                          category,
+                                          style:
+                                              TextStyle(color: Colors.white70),
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  PopupMenuItem(
-                                    value: 'add_category',
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.add,
-                                          color: WarnaSecondary,
-                                          size: 20,
-                                        ),
-                                        SizedBox(width: 8),
-                                        Text(
-                                          'Add Category',
-                                          style: TextStyle(
+                                    PopupMenuItem(
+                                      value: 'add_category',
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.add,
                                             color: WarnaSecondary,
-                                            fontSize: 14,
+                                            size: 20,
                                           ),
-                                        ),
-                                      ],
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Add Category',
+                                            style: TextStyle(
+                                              color: WarnaSecondary,
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
-                                ],
-                              ).then((selectedValue) {
-                                setState(() {
-                                  if (selectedValue != null) {
-                                    if (selectedValue == 'add_category') {
-                                      // Navigate to KategoriPage
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => KategoriPage(),
-                                        ),
-                                      ).then((_) {
-                                        // Reload categories when returning from KategoriPage
-                                        _loadCategories();
-                                      });
-                                    } else {
-                                      selectedCategory = selectedValue;
-                                      widget.onCategorySelected
-                                          ?.call(selectedValue);
+                                  ],
+                                ).then((selectedValue) {
+                                  setState(() {
+                                    if (selectedValue != null) {
+                                      if (selectedValue == 'add_category') {
+                                        // Navigate to KategoriPage
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                KategoriPage(),
+                                          ),
+                                        ).then((_) {
+                                          // Reload categories when returning from KategoriPage
+                                          _loadCategories();
+                                        });
+                                      } else {
+                                        selectedCategory = selectedValue;
+                                        widget.onCategorySelected
+                                            ?.call(selectedValue);
+                                      }
                                     }
-                                  }
+                                  });
                                 });
-                              });
-                            }
-                          },
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                selectedCategory ?? 'No Category',
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 14,
-                                ),
-                              ),
-                              SizedBox(width: 4),
-                              Icon(
-                                Icons.keyboard_arrow_down,
-                                color: Colors.white70,
-                                size: 20,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      Container(
-                        height: 36,
-                        padding: EdgeInsets.symmetric(horizontal: 8),
-                        decoration: BoxDecoration(
-                          color: WarnaUtama2,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Padding(
-                              padding: EdgeInsets.only(left: 0),
-                              child: IconButton(
-                                padding: EdgeInsets.zero,
-                                constraints: BoxConstraints(
-                                  minWidth: 20,
-                                  maxWidth: 20,
-                                ),
-                                onPressed: () => _selectDate(context),
-                                icon: Icon(
-                                  Icons.calendar_today,
-                                  color: WarnaSecondary,
-                                  size: 20,
-                                ),
-                              ),
-                            ),
-                            if (_dateManuallySelected && selectedDate != null)
-                              Padding(
-                                padding: EdgeInsets.only(left: 0, right: 4),
-                                child: Text(
-                                  _formatDate(DateFormat('yyyy-MM-dd')
-                                      .format(selectedDate!)),
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        height: 36,
-                        padding: EdgeInsets.symmetric(horizontal: 8),
-                        decoration: BoxDecoration(
-                          color: WarnaUtama2,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Padding(
-                              padding: EdgeInsets.only(left: 0),
-                              child: IconButton(
-                                padding: EdgeInsets.zero,
-                                constraints: BoxConstraints(
-                                  minWidth: 24,
-                                  maxWidth: 24,
-                                ),
-                                onPressed: () => _selectTime(context),
-                                icon: Icon(
-                                  Icons.access_time,
-                                  color: WarnaSecondary,
-                                  size: 20,
-                                ),
-                              ),
-                            ),
-                            if (selectedTime != null)
-                              Padding(
-                                padding: EdgeInsets.only(left: 0, right: 4),
-                                child: Text(
-                                  selectedTime!.format(context),
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        key: _priorityKey,
-                        height: 36,
-                        padding: EdgeInsets.symmetric(horizontal: 12),
-                        decoration: BoxDecoration(
-                          color: WarnaUtama2,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: GestureDetector(
-                          onTap: () {
-                            final RenderBox? button =
-                                _priorityKey.currentContext?.findRenderObject()
-                                    as RenderBox?;
-                            if (button != null) {
-                              final position =
-                                  button.localToGlobal(Offset.zero);
-                              final size = button.size;
-
-                              showMenu(
-                                context: context,
-                                position: RelativeRect.fromLTRB(
-                                  position.dx,
-                                  position.dy - 165,
-                                  position.dx + size.width,
-                                  position.dy + size.height,
-                                ),
-                                color: WarnaUtama2,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                elevation: 8,
-                                items: [
-                                  PopupMenuItem(
-                                    value: 'high',
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 12,
-                                          height: 12,
-                                          decoration: BoxDecoration(
-                                            color: Colors.red,
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                        SizedBox(width: 8),
-                                        Text(
-                                          'High',
-                                          style:
-                                              TextStyle(color: Colors.white70),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  PopupMenuItem(
-                                    value: 'medium',
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 12,
-                                          height: 12,
-                                          decoration: BoxDecoration(
-                                            color: Colors.orange,
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                        SizedBox(width: 8),
-                                        Text(
-                                          'Medium',
-                                          style:
-                                              TextStyle(color: Colors.white70),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  PopupMenuItem(
-                                    value: 'low',
-                                    child: Row(
-                                      children: [
-                                        Container(
-                                          width: 12,
-                                          height: 12,
-                                          decoration: BoxDecoration(
-                                            color: Colors.green,
-                                            shape: BoxShape.circle,
-                                          ),
-                                        ),
-                                        SizedBox(width: 8),
-                                        Text(
-                                          'Low',
-                                          style:
-                                              TextStyle(color: Colors.white70),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ).then((value) {
-                                setState(() {
-                                  if (value != null) {
-                                    selectedPriority = value;
-                                  }
-                                });
-                              });
-                            }
-                          },
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 12,
-                                height: 12,
-                                margin: EdgeInsets.only(
-                                    right: selectedPriority != null ? 0 : 8),
-                                decoration: BoxDecoration(
-                                  color: selectedPriority != null
-                                      ? _getPriorityColor(selectedPriority)
-                                      : Colors.grey,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              if (selectedPriority == null)
+                              }
+                            },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
                                 Text(
-                                  'Priority',
+                                  selectedCategory ?? 'No Category',
                                   style: TextStyle(
                                     color: Colors.white70,
                                     fontSize: 14,
                                   ),
                                 ),
-                              SizedBox(width: 4),
-                              Icon(
-                                Icons.keyboard_arrow_down,
-                                color: Colors.white70,
-                                size: 20,
+                                SizedBox(width: 4),
+                                Icon(
+                                  Icons.keyboard_arrow_down,
+                                  color: Colors.white70,
+                                  size: 20,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Container(
+                          height: 36,
+                          padding: EdgeInsets.symmetric(horizontal: 8),
+                          decoration: BoxDecoration(
+                            color: WarnaUtama2,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Padding(
+                                padding: EdgeInsets.only(left: 0),
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: BoxConstraints(
+                                    minWidth: 20,
+                                    maxWidth: 20,
+                                  ),
+                                  onPressed: () => _selectDate(context),
+                                  icon: Icon(
+                                    Icons.calendar_today,
+                                    color: WarnaSecondary,
+                                    size: 20,
+                                  ),
+                                ),
                               ),
+                              if (_dateManuallySelected && selectedDate != null)
+                                Padding(
+                                  padding: EdgeInsets.only(left: 0, right: 4),
+                                  child: Text(
+                                    _formatDate(DateFormat('yyyy-MM-dd')
+                                        .format(selectedDate!)),
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
                             ],
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                SizedBox(height: 20),
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(15),
-                    boxShadow: [
-                      BoxShadow(
-                        color: WarnaSecondary.withOpacity(0.3),
-                        spreadRadius: 1,
-                        blurRadius: 5,
-                        offset: Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      if (_formKey.currentState!.validate()) {
-                        final taskTitle = _taskController.text.trim();
-                        final category =
-                            selectedCategory == 'All' ? null : selectedCategory;
+                        Container(
+                          height: 36,
+                          padding: EdgeInsets.symmetric(horizontal: 8),
+                          decoration: BoxDecoration(
+                            color: WarnaUtama2,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Padding(
+                                padding: EdgeInsets.only(left: 0),
+                                child: IconButton(
+                                  padding: EdgeInsets.zero,
+                                  constraints: BoxConstraints(
+                                    minWidth: 24,
+                                    maxWidth: 24,
+                                  ),
+                                  onPressed: () => _selectTime(context),
+                                  icon: Icon(
+                                    Icons.access_time,
+                                    color: WarnaSecondary,
+                                    size: 20,
+                                  ),
+                                ),
+                              ),
+                              if (selectedTime != null)
+                                Padding(
+                                  padding: EdgeInsets.only(left: 0, right: 4),
+                                  child: Text(
+                                    selectedTime!.format(context),
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          key: _priorityKey,
+                          height: 36,
+                          padding: EdgeInsets.symmetric(horizontal: 12),
+                          decoration: BoxDecoration(
+                            color: WarnaUtama2,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: GestureDetector(
+                            onTap: () {
+                              final RenderBox? button = _priorityKey
+                                  .currentContext
+                                  ?.findRenderObject() as RenderBox?;
+                              if (button != null) {
+                                final position =
+                                    button.localToGlobal(Offset.zero);
+                                final size = button.size;
 
-                        await _saveTask(taskTitle, category);
-                        _taskController.clear();
-                        Navigator.pop(context);
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: WarnaSecondary,
-                      minimumSize: Size(double.infinity, 50),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(15),
-                      ),
-                      elevation: 0,
+                                showMenu(
+                                  context: context,
+                                  position: RelativeRect.fromLTRB(
+                                    position.dx,
+                                    position.dy - 165,
+                                    position.dx + size.width,
+                                    position.dy + size.height,
+                                  ),
+                                  color: WarnaUtama2,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  elevation: 8,
+                                  items: [
+                                    PopupMenuItem(
+                                      value: 'high',
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 12,
+                                            height: 12,
+                                            decoration: BoxDecoration(
+                                              color: Colors.red,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'High',
+                                            style: TextStyle(
+                                                color: Colors.white70),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    PopupMenuItem(
+                                      value: 'medium',
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 12,
+                                            height: 12,
+                                            decoration: BoxDecoration(
+                                              color: Colors.orange,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Medium',
+                                            style: TextStyle(
+                                                color: Colors.white70),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    PopupMenuItem(
+                                      value: 'low',
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 12,
+                                            height: 12,
+                                            decoration: BoxDecoration(
+                                              color: Colors.green,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                          SizedBox(width: 8),
+                                          Text(
+                                            'Low',
+                                            style: TextStyle(
+                                                color: Colors.white70),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ).then((value) {
+                                  setState(() {
+                                    if (value != null) {
+                                      selectedPriority = value;
+                                    }
+                                  });
+                                });
+                              }
+                            },
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 12,
+                                  height: 12,
+                                  margin: EdgeInsets.only(
+                                      right: selectedPriority != null ? 0 : 8),
+                                  decoration: BoxDecoration(
+                                    color: selectedPriority != null
+                                        ? _getPriorityColor(selectedPriority)
+                                        : Colors.grey,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                if (selectedPriority == null)
+                                  Text(
+                                    'Priority',
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                SizedBox(width: 4),
+                                Icon(
+                                  Icons.keyboard_arrow_down,
+                                  color: Colors.white70,
+                                  size: 20,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    child: Text(
-                      'Add Task',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: WarnaUtama,
+                  ),
+                  SizedBox(height: 20),
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(15),
+                      boxShadow: [
+                        BoxShadow(
+                          color: WarnaSecondary.withOpacity(0.3),
+                          spreadRadius: 1,
+                          blurRadius: 5,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: ElevatedButton(
+                      onPressed: () async {
+                        if (_formKey.currentState!.validate()) {
+                          final taskTitle = _taskController.text.trim();
+                          final category = selectedCategory == 'All'
+                              ? null
+                              : selectedCategory;
+
+                          await _saveTask(taskTitle, category);
+                          _taskController.clear();
+                          Navigator.pop(context);
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: WarnaSecondary,
+                        minimumSize: Size(double.infinity, 50),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        'Add Task',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: WarnaUtama,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

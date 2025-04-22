@@ -411,6 +411,7 @@ class _KalenderPageState extends State<KalenderPage>
                 child: AddTasks(
                   initialDate: _selectedDay ?? DateTime.now(),
                   onTaskAdded: () {
+                    _loadCategories();
                     _loadEvents();
                   },
                   onDateSelected: (DateTime newDate) {
@@ -422,7 +423,10 @@ class _KalenderPageState extends State<KalenderPage>
                 ),
               );
             },
-          );
+          ).then((_) {
+            _loadCategories();
+            _loadEvents();
+          });
         },
         backgroundColor: WarnaSecondary,
         child: Icon(Icons.add, color: WarnaUtama),
@@ -453,6 +457,7 @@ class _KalenderPageState extends State<KalenderPage>
               builder: (context) => TaskDetail(
                 task: task,
                 onTaskUpdated: () {
+                  _loadCategories();
                   _loadEvents();
                 },
               ),

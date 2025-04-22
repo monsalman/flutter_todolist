@@ -635,7 +635,11 @@ class _ProfilePageState extends State<ProfilePage> {
                                 context,
                                 MaterialPageRoute(
                                     builder: (context) => KategoriPage()),
-                              );
+                              ).then((_) {
+                                // Refresh data when returning from KategoriPage
+                                _loadUserData();
+                                _loadCompletedTasksData();
+                              });
                             },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.white.withOpacity(0.05),

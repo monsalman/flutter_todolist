@@ -101,6 +101,44 @@ class _TaskDetailState extends State<TaskDetail> {
     }
   }
 
+  // Method to reload task data from the database to get the latest information
+  Future<void> _reloadTaskData() async {
+    try {
+      final data = await Supabase.instance.client
+          .from('tasks')
+          .select()
+          .eq('id', widget.task['id'])
+          .single();
+
+      if (mounted) {
+        setState(() {
+          // Update the task data with the latest from the database
+          widget.task['category'] = data['category'];
+          widget.task['title'] = data['title'];
+          widget.task['priority'] = data['priority'];
+          widget.task['due_date'] = data['due_date'];
+          widget.task['time'] = data['time'];
+          widget.task['notes'] = data['notes'];
+
+          // Update subtasks if needed
+          if (data['subtasks'] != null) {
+            subtasks = (data['subtasks'] as List).map((item) {
+              if (item is Map) {
+                return Map<String, dynamic>.from(item);
+              } else {
+                return {'title': item.toString(), 'isCompleted': false};
+              }
+            }).toList();
+          }
+        });
+      }
+    } catch (error) {
+      if (mounted) {
+        print('Error reloading task data: $error');
+      }
+    }
+  }
+
   Future<void> _updateCategory(String? newCategory) async {
     if (newCategory == widget.task['category']) {
       return;
@@ -115,14 +153,18 @@ class _TaskDetailState extends State<TaskDetail> {
       setState(() {
         widget.task['category'] = newCategory;
       });
+
+      // Inform parent page about the update
       widget.onTaskUpdated();
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Category updated successfully'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Category updated successfully'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -1548,7 +1590,11 @@ class _TaskDetailState extends State<TaskDetail> {
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            // Call the callback to refresh the parent page before popping
+            widget.onTaskUpdated();
+            Navigator.pop(context);
+          },
         ),
         actions: [
           IconButton(
@@ -1629,7 +1675,17 @@ class _TaskDetailState extends State<TaskDetail> {
                             MaterialPageRoute(
                               builder: (context) => KategoriPage(),
                             ),
-                          );
+                          ).then((_) async {
+                            // Refresh kategori
+                            await _loadCategories();
+
+                            // Reload task data untuk memastikan kategori terupdate
+                            // Penting jika task ini menggunakan kategori yang diubah namanya
+                            await _reloadTaskData();
+
+                            // Beritahu parent screen bahwa mungkin ada perubahan
+                            widget.onTaskUpdated();
+                          });
                         } else if (selectedValue != null) {
                           _updateCategory(selectedValue);
                         }

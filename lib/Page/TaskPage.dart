@@ -254,7 +254,11 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                     MaterialPageRoute(
                       builder: (context) => KategoriPage(),
                     ),
-                  );
+                  ).then((_) {
+                    // Refresh data when returning from KategoriPage
+                    _loadCategories();
+                    _loadTasks();
+                  });
                 },
               ),
             ],
@@ -556,6 +560,8 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                 child: AddTasks(
                   initialDate: DateTime.now(),
                   onTaskAdded: () {
+                    // Refresh both tasks and categories when tasks are added or modal is closed
+                    _loadCategories();
                     _loadTasks();
                   },
                   onCategorySelected: (String? category) {
@@ -567,7 +573,11 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                 ),
               );
             },
-          );
+          ).then((_) {
+            // This ensures refresh happens even if modal is dismissed by tapping outside
+            _loadCategories();
+            _loadTasks();
+          });
         },
         backgroundColor: WarnaSecondary,
         child: Icon(Icons.add, color: WarnaUtama),
@@ -665,6 +675,8 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
               builder: (context) => TaskDetail(
                 task: task,
                 onTaskUpdated: () {
+                  // Refresh both tasks and categories when returning from task detail
+                  _loadCategories();
                   _loadTasks();
                 },
               ),
