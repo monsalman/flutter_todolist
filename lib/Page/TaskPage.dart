@@ -137,8 +137,37 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
     }
   }
 
+  bool _hasUncompletedSubtasks(Map<String, dynamic> task) {
+    if (task['subtasks'] != null && (task['subtasks'] as List).isNotEmpty) {
+      final subtasks = task['subtasks'] as List;
+      return subtasks.any((subtask) => subtask['isCompleted'] == false);
+    }
+    return false;
+  }
+
   Future<void> _updateTaskStatus(String taskId, bool isCompleted) async {
     try {
+      // Get the task data first to check subtasks
+      final taskData = await Supabase.instance.client
+          .from('tasks')
+          .select()
+          .eq('id', taskId)
+          .single();
+
+      // If attempting to mark as completed and there are uncompleted subtasks, show error
+      if (isCompleted && _hasUncompletedSubtasks(taskData)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content:
+                  Text('Cannot complete task: Complete all subtasks first'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
       final updateData = {
         'is_completed': isCompleted,
         'updated_at': DateTime.now().toIso8601String(),
@@ -638,6 +667,8 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
       }
     }
 
+    final bool hasUncompletedSubtasks = _hasUncompletedSubtasks(task);
+
     // Warna untuk teks dan checkbox berdasarkan status completed
     final Color textColor = isCompleted ? Colors.white38 : Colors.white;
     final Color dateTimeColor = isCompleted
@@ -685,32 +716,44 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
         },
         leading: Transform.scale(
           scale: 1.2,
-          child: Checkbox(
-            value: isCompleted,
-            onChanged: (bool? value) {
-              if (value != null) {
-                final taskId = task['id'];
-                if (taskId != null) {
-                  _updateTaskStatus(taskId, value);
-                }
-              }
-            },
-            activeColor: checkboxColor,
-            checkColor: WarnaUtama,
-            side: BorderSide(
-              color: checkboxColor,
-              width: 2,
-            ),
-            fillColor: MaterialStateProperty.resolveWith<Color>(
-              (Set<MaterialState> states) {
-                if (states.contains(MaterialState.selected)) {
-                  return checkboxColor;
-                }
-                return Colors.transparent;
-              },
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(4),
+          child: Tooltip(
+            message: hasUncompletedSubtasks && !isCompleted
+                ? 'Complete all subtasks first'
+                : isCompleted
+                    ? 'Mark as uncompleted'
+                    : 'Mark as completed',
+            child: MouseRegion(
+              cursor: hasUncompletedSubtasks && !isCompleted
+                  ? SystemMouseCursors.forbidden
+                  : SystemMouseCursors.click,
+              child: Checkbox(
+                value: isCompleted,
+                onChanged: (bool? value) {
+                  if (value != null) {
+                    final taskId = task['id'];
+                    if (taskId != null) {
+                      _updateTaskStatus(taskId, value);
+                    }
+                  }
+                },
+                activeColor: checkboxColor,
+                checkColor: WarnaUtama,
+                side: BorderSide(
+                  color: checkboxColor,
+                  width: 2,
+                ),
+                fillColor: MaterialStateProperty.resolveWith<Color>(
+                  (Set<MaterialState> states) {
+                    if (states.contains(MaterialState.selected)) {
+                      return checkboxColor;
+                    }
+                    return Colors.transparent;
+                  },
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
             ),
           ),
         ),

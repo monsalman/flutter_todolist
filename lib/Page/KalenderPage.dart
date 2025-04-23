@@ -437,6 +437,7 @@ class _KalenderPageState extends State<KalenderPage>
   Widget _buildTaskCard(Map<String, dynamic> task) {
     final bool isCompleted = task['is_completed'] ?? false;
     final bool isTimeOverdue = _isTaskOverdue(task);
+    final bool hasUncompletedSubtasks = _hasUncompletedSubtasks(task);
     final Color textColor = isCompleted ? Colors.white38 : Colors.white;
     final Color dateTimeColor = isCompleted
         ? Colors.white38
@@ -469,18 +470,30 @@ class _KalenderPageState extends State<KalenderPage>
           horizontalTitleGap: 0,
           leading: Transform.scale(
             scale: 1.2,
-            child: Checkbox(
-              value: isCompleted,
-              onChanged: (bool? value) {
-                if (value != null) {
-                  _updateTaskStatus(task['id'], value);
-                }
-              },
-              activeColor: checkboxColor,
-              checkColor: WarnaUtama,
-              side: BorderSide(color: checkboxColor, width: 2),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(4),
+            child: Tooltip(
+              message: hasUncompletedSubtasks && !isCompleted
+                  ? 'Complete all subtasks first'
+                  : isCompleted
+                      ? 'Mark as uncompleted'
+                      : 'Mark as completed',
+              child: MouseRegion(
+                cursor: hasUncompletedSubtasks && !isCompleted
+                    ? SystemMouseCursors.forbidden
+                    : SystemMouseCursors.click,
+                child: Checkbox(
+                  value: isCompleted,
+                  onChanged: (bool? value) {
+                    if (value != null) {
+                      _updateTaskStatus(task['id'], value);
+                    }
+                  },
+                  activeColor: checkboxColor,
+                  checkColor: WarnaUtama,
+                  side: BorderSide(color: checkboxColor, width: 2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
               ),
             ),
           ),
@@ -641,8 +654,37 @@ class _KalenderPageState extends State<KalenderPage>
     return "";
   }
 
+  bool _hasUncompletedSubtasks(Map<String, dynamic> task) {
+    if (task['subtasks'] != null && (task['subtasks'] as List).isNotEmpty) {
+      final subtasks = task['subtasks'] as List;
+      return subtasks.any((subtask) => subtask['isCompleted'] == false);
+    }
+    return false;
+  }
+
   Future<void> _updateTaskStatus(String taskId, bool isCompleted) async {
     try {
+      // Get the task data first to check subtasks
+      final taskData = await Supabase.instance.client
+          .from('tasks')
+          .select()
+          .eq('id', taskId)
+          .single();
+
+      // If attempting to mark as completed and there are uncompleted subtasks, show error
+      if (isCompleted && _hasUncompletedSubtasks(taskData)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content:
+                  Text('Cannot complete task: Complete all subtasks first'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
       final updateData = {
         'is_completed': isCompleted,
         'updated_at': DateTime.now().toIso8601String(),
