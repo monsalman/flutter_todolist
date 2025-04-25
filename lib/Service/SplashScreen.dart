@@ -25,12 +25,10 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (mounted) {
       if (session != null) {
-        // User is logged in, navigate to NavBar
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => NavBar()),
         );
       } else {
-        // User is not logged in, navigate to LoginPage
         Navigator.of(context).pushReplacement(
           MaterialPageRoute(builder: (context) => LoginPage()),
         );

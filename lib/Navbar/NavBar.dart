@@ -10,8 +10,8 @@ class NavBar extends StatefulWidget {
 
   const NavBar({
     super.key,
-    this.initialIndex = 0, // Default ke halaman pertama
-    this.expandCategories = false, // Default false
+    this.initialIndex = 0,
+    this.expandCategories = false,
   });
 
   @override

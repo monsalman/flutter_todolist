@@ -33,9 +33,7 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
 
     _timer = Timer.periodic(Duration(seconds: 1), (timer) {
       if (mounted) {
-        setState(() {
-          // Trigger rebuild untuk memperbarui tampilan
-        });
+        setState(() {});
       }
     });
   }
@@ -147,14 +145,12 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
 
   Future<void> _updateTaskStatus(String taskId, bool isCompleted) async {
     try {
-      // Get the task data first to check subtasks
       final taskData = await Supabase.instance.client
           .from('tasks')
           .select()
           .eq('id', taskId)
           .single();
 
-      // If attempting to mark as completed and there are uncompleted subtasks, show error
       if (isCompleted && _hasUncompletedSubtasks(taskData)) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -173,12 +169,9 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
         'updated_at': DateTime.now().toIso8601String(),
       };
 
-      // If task is being marked as completed, add the completion date
       if (isCompleted) {
         updateData['date_completed'] = DateTime.now().toIso8601String();
       } else {
-        // If task is being uncompleted, remove the completion date by setting to empty string
-        // Using null would require changing the Supabase column to allow nulls
         updateData['date_completed'] = '';
       }
 
@@ -284,7 +277,6 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                       builder: (context) => KategoriPage(),
                     ),
                   ).then((_) {
-                    // Refresh data when returning from KategoriPage
                     _loadCategories();
                     _loadTasks();
                   });
@@ -299,7 +291,6 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
         child: ListView(
           padding: EdgeInsets.only(top: 15, left: 10, right: 10),
           children: [
-            // Upcoming Section
             Column(
               children: [
                 InkWell(
@@ -366,8 +357,6 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                 ),
               ],
             ),
-
-            // Today Section
             Column(
               children: [
                 InkWell(
@@ -434,8 +423,6 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                 ),
               ],
             ),
-
-            // Overdue Section
             if (overdueTasks.isNotEmpty)
               Column(
                 children: [
@@ -503,8 +490,6 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                   ),
                 ],
               ),
-
-            // Completed Section
             if (completedTasks.isNotEmpty)
               Column(
                 children: [
@@ -589,7 +574,6 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                 child: AddTasks(
                   initialDate: DateTime.now(),
                   onTaskAdded: () {
-                    // Refresh both tasks and categories when tasks are added or modal is closed
                     _loadCategories();
                     _loadTasks();
                   },
@@ -603,7 +587,6 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
               );
             },
           ).then((_) {
-            // This ensures refresh happens even if modal is dismissed by tapping outside
             _loadCategories();
             _loadTasks();
           });
@@ -643,10 +626,8 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
       {bool isOverdue = false, bool isToday = false}) {
     final bool isCompleted = task['is_completed'] ?? false;
 
-    // Cek apakah task sudah lewat waktu
     bool isTimeOverdue = false;
     if (!isCompleted && task['due_date'] != null) {
-      // Hanya cek overdue jika task belum completed
       final now = DateTime.now();
       final taskDate = DateTime.parse(task['due_date']).toLocal();
 
@@ -669,14 +650,12 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
 
     final bool hasUncompletedSubtasks = _hasUncompletedSubtasks(task);
 
-    // Warna untuk teks dan checkbox berdasarkan status completed
     final Color textColor = isCompleted ? Colors.white38 : Colors.white;
     final Color dateTimeColor = isCompleted
         ? Colors.white38
         : (isTimeOverdue ? Colors.redAccent : Colors.white70);
     final Color checkboxColor = isCompleted ? Colors.white38 : WarnaSecondary;
 
-    // Tambahkan fungsi untuk mendapatkan warna prioritas
     Color _getPriorityColor(String? priority) {
       switch (priority?.toLowerCase()) {
         case 'high':
@@ -706,7 +685,6 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
               builder: (context) => TaskDetail(
                 task: task,
                 onTaskUpdated: () {
-                  // Refresh both tasks and categories when returning from task detail
                   _loadCategories();
                   _loadTasks();
                 },
@@ -818,7 +796,6 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
                   ],
                 ),
                 SizedBox(width: 8),
-                // Icon indicators
                 Row(
                   children: [
                     if (task['subtasks'] != null &&
@@ -886,7 +863,6 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
         return "(${difference.inMinutes}m late)";
       }
     } else {
-      // Jika hanya ada tanggal (tanpa waktu)
       final taskDay = DateTime(taskDate.year, taskDate.month, taskDate.day);
       final today = DateTime(now.year, now.month, now.day);
       final difference = today.difference(taskDay);

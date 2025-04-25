@@ -231,7 +231,6 @@ class _KalenderPageState extends State<KalenderPage>
                   : SingleChildScrollView(
                       child: Column(
                         children: [
-                          // Uncompleted Tasks
                           if (_getEventsForDay(_selectedDay!)
                               .where((task) => !(task['is_completed'] ?? false))
                               .isNotEmpty) ...[
@@ -311,7 +310,6 @@ class _KalenderPageState extends State<KalenderPage>
                               duration: _animationDuration,
                             ),
                           ],
-                          // Completed Tasks Section
                           if (_getEventsForDay(_selectedDay!)
                               .where((task) => task['is_completed'] ?? false)
                               .isNotEmpty) ...[
@@ -547,7 +545,6 @@ class _KalenderPageState extends State<KalenderPage>
                       ),
                     ),
                   if (isTimeOverdue && !isCompleted) SizedBox(width: 8),
-                  // Icon indicators
                   if (task['subtasks'] != null &&
                       (task['subtasks'] as List).isNotEmpty)
                     Padding(
@@ -643,7 +640,6 @@ class _KalenderPageState extends State<KalenderPage>
         return "(${difference.inMinutes}m late)";
       }
     } else {
-      // If only date without time
       final taskDay = DateTime(taskDate.year, taskDate.month, taskDate.day);
       final today = DateTime(now.year, now.month, now.day);
       final difference = today.difference(taskDay);
@@ -664,14 +660,12 @@ class _KalenderPageState extends State<KalenderPage>
 
   Future<void> _updateTaskStatus(String taskId, bool isCompleted) async {
     try {
-      // Get the task data first to check subtasks
       final taskData = await Supabase.instance.client
           .from('tasks')
           .select()
           .eq('id', taskId)
           .single();
 
-      // If attempting to mark as completed and there are uncompleted subtasks, show error
       if (isCompleted && _hasUncompletedSubtasks(taskData)) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -690,11 +684,9 @@ class _KalenderPageState extends State<KalenderPage>
         'updated_at': DateTime.now().toIso8601String(),
       };
 
-      // If task is being marked as completed, add the completion date
       if (isCompleted) {
         updateData['date_completed'] = DateTime.now().toIso8601String();
       } else {
-        // If task is being uncompleted, remove the completion date
         updateData['date_completed'] = '';
       }
 

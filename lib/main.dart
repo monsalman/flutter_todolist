@@ -9,20 +9,16 @@ import 'Service/NotificationService.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load env file
   await dotenv.load(fileName: ".env");
 
-  // Initialize Supabase
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL'] ?? '',
     anonKey: dotenv.env['SUPABASE_ANON_KEY'] ?? '',
   );
 
-  // Initialize notification service
   final notificationService = NotificationService();
   await notificationService.init();
 
-  // Set up periodic cleanup setiap 12 jam
   Timer.periodic(Duration(hours: 12), (timer) async {
     print('Running scheduled notification cleanup');
     await notificationService.cleanupOldNotifications();

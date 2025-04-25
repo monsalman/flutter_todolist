@@ -45,8 +45,6 @@ class _AddTasksState extends State<AddTasks> {
 
   @override
   void dispose() {
-    // Refresh parent page when the bottom sheet is closed without adding a task
-    // This ensures categories and task list are refreshed
     if (!_taskAddedManually) {
       widget.onTaskAdded();
     }
@@ -88,7 +86,6 @@ class _AddTasksState extends State<AddTasks> {
             ? '${selectedTime!.hour.toString().padLeft(2, '0')}:${selectedTime!.minute.toString().padLeft(2, '0')}'
             : null;
 
-        // Create local DateTime for task storage
         DateTime taskDateTime;
         if (timeString != null) {
           final timeParts = timeString.split(':');
@@ -107,7 +104,6 @@ class _AddTasksState extends State<AddTasks> {
           );
         }
 
-        // Store task in local time (no UTC conversion)
         final response = await Supabase.instance.client
             .from('tasks')
             .insert({
@@ -124,7 +120,6 @@ class _AddTasksState extends State<AddTasks> {
             .select()
             .single();
 
-        // Only convert to UTC for notification scheduling
         if (timeString != null) {
           final notificationService = NotificationService();
           final notificationDateTime = taskDateTime.toUtc();
@@ -730,8 +725,7 @@ class _AddTasksState extends State<AddTasks> {
   String _formatDate(String? dateString) {
     if (dateString == null) return 'No Date';
     try {
-      final date = DateTime.parse(dateString)
-          .toLocal(); // Konversi ke waktu lokal untuk display
+      final date = DateTime.parse(dateString).toLocal();
       return "${date.day.toString().padLeft(2, '0')} ${DateFormat('MMM').format(date)} ${(date.year % 100).toString().padLeft(2, '0')}";
     } catch (e) {
       return dateString;
@@ -742,8 +736,6 @@ class _AddTasksState extends State<AddTasks> {
   Widget build(BuildContext context) {
     return WillPopScope(
       onWillPop: () async {
-        // Refresh parent page when bottom sheet is closed via back button or gesture
-        // This ensures categories and task list are refreshed if user exits without adding task
         if (!_taskAddedManually) {
           widget.onTaskAdded();
         }
@@ -879,7 +871,6 @@ class _AddTasksState extends State<AddTasks> {
                                   setState(() {
                                     if (selectedValue != null) {
                                       if (selectedValue == 'add_category') {
-                                        // Navigate to KategoriPage
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(
@@ -887,7 +878,6 @@ class _AddTasksState extends State<AddTasks> {
                                                 KategoriPage(),
                                           ),
                                         ).then((_) {
-                                          // Reload categories when returning from KategoriPage
                                           _loadCategories();
                                         });
                                       } else {

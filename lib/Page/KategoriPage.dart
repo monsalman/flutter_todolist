@@ -118,13 +118,11 @@ class _KategoriPageState extends State<KategoriPage> {
       final newCategories = [...categories];
       newCategories[index] = newName.trim();
 
-      // Update kategori di table users
       await Supabase.instance.client
           .from('users')
           .update({'categories': newCategories}).eq(
               'id', Supabase.instance.client.auth.currentUser!.id);
 
-      // Update kategori di semua task yang menggunakan kategori ini
       await Supabase.instance.client
           .from('tasks')
           .update({'category': newName.trim()})
@@ -161,13 +159,11 @@ class _KategoriPageState extends State<KategoriPage> {
       final newCategories = [...categories];
       newCategories.removeAt(index);
 
-      // Update kategori di table users
       await Supabase.instance.client
           .from('users')
           .update({'categories': newCategories}).eq(
               'id', Supabase.instance.client.auth.currentUser!.id);
 
-      // Set kategori menjadi null untuk semua task yang menggunakan kategori ini
       await Supabase.instance.client
           .from('tasks')
           .update({'category': null})
@@ -206,7 +202,6 @@ class _KategoriPageState extends State<KategoriPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Back button and title
             Padding(
               padding: const EdgeInsets.only(
                   left: 16.0, top: 35.0, right: 16.0, bottom: 10.0),
@@ -230,8 +225,6 @@ class _KategoriPageState extends State<KategoriPage> {
                 ],
               ),
             ),
-
-            // Main content
             Expanded(
               child: isLoading
                   ? Center(
@@ -401,8 +394,6 @@ class _KategoriPageState extends State<KategoriPage> {
                                 );
                               },
                             ),
-
-                          // Add button below category list
                           Padding(
                             padding: const EdgeInsets.all(16.0),
                             child: Container(

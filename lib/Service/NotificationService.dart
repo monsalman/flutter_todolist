@@ -28,7 +28,6 @@ class NotificationService {
 
   Future<void> init() async {
     try {
-      // Initialize timezone first
       tz.initializeTimeZones();
       tz.setLocalLocation(tz.getLocation('Asia/Jakarta'));
 
@@ -55,12 +54,10 @@ class NotificationService {
             if (details.payload != null) {
               print('Received notification payload: ${details.payload}');
 
-              // Parse payload JSON
               final payloadData = json.decode(details.payload!);
               final taskId = payloadData['taskId'];
               final notificationId = payloadData['notificationId'];
 
-              // Ambil data task dari Supabase
               final task = await Supabase.instance.client
                   .from('tasks')
                   .select()
@@ -69,23 +66,18 @@ class NotificationService {
 
               print('Found task: $task');
 
-              // Dapatkan context yang valid menggunakan navigatorKey
               final context = navigatorKey.currentContext;
               if (context != null) {
-                // Tandai notifikasi sebagai sudah dibaca menggunakan notificationId
                 await _supabaseNotification
                     .markNotificationAsRead(notificationId);
                 print('Notification marked as read: $notificationId');
 
-                // Navigate ke TaskDetail
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => TaskDetail(
                       task: task,
-                      onTaskUpdated: () {
-                        // Refresh task list jika diperlukan
-                      },
+                      onTaskUpdated: () {},
                     ),
                   ),
                 );
@@ -103,7 +95,6 @@ class NotificationService {
 
       await _requestPermissions();
 
-      // Initialize Supabase notifications
       await _supabaseNotification.init();
     } catch (e) {
       print('Error initializing notification service: $e');
@@ -145,7 +136,6 @@ class NotificationService {
     await _supabaseNotification.cancelNotification(id.toString());
   }
 
-  // Menambahkan metode baru untuk membatalkan notifikasi berdasarkan task_id
   Future<void> cancelNotificationByTaskId(String taskId) async {
     await _supabaseNotification.cancelNotificationByTaskId(taskId);
   }

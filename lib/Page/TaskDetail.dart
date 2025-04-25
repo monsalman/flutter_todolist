@@ -43,18 +43,8 @@ class _TaskDetailState extends State<TaskDetail> {
   bool _isUploading = false;
   final NotificationService _notificationService = NotificationService();
   final GlobalKey _priorityKey = GlobalKey();
-  // Define default reminder time (in minutes)
   int _defaultReminderMinutes = 15;
-  // List of reminder options in minutes
-  final List<int> _reminderOptions = [
-    5,
-    10,
-    15,
-    30,
-    60,
-    120,
-    1440
-  ]; // 1440 = 24 hours
+  final List<int> _reminderOptions = [5, 10, 15, 30, 60, 120, 1440];
 
   @override
   void initState() {
@@ -71,7 +61,6 @@ class _TaskDetailState extends State<TaskDetail> {
     }
     _loadCategories();
 
-    // Inisialisasi attachments
     if (widget.task['attachments'] != null) {
       _attachmentPaths = List<String>.from(widget.task['attachments']);
       _attachmentUrls = [];
@@ -113,7 +102,6 @@ class _TaskDetailState extends State<TaskDetail> {
     }
   }
 
-  // Method to reload task data from the database to get the latest information
   Future<void> _reloadTaskData() async {
     try {
       final data = await Supabase.instance.client
@@ -124,7 +112,6 @@ class _TaskDetailState extends State<TaskDetail> {
 
       if (mounted) {
         setState(() {
-          // Update the task data with the latest from the database
           widget.task['category'] = data['category'];
           widget.task['title'] = data['title'];
           widget.task['priority'] = data['priority'];
@@ -132,7 +119,6 @@ class _TaskDetailState extends State<TaskDetail> {
           widget.task['time'] = data['time'];
           widget.task['notes'] = data['notes'];
 
-          // Update subtasks if needed
           if (data['subtasks'] != null) {
             subtasks = (data['subtasks'] as List).map((item) {
               if (item is Map) {
@@ -166,7 +152,6 @@ class _TaskDetailState extends State<TaskDetail> {
         widget.task['category'] = newCategory;
       });
 
-      // Inform parent page about the update
       widget.onTaskUpdated();
 
       if (mounted) {
@@ -268,7 +253,6 @@ class _TaskDetailState extends State<TaskDetail> {
     });
   }
 
-  // Tambahkan method untuk mengurutkan subtasks
   List<Map<String, dynamic>> _getSortedSubtasks() {
     return [...subtasks]..sort((a, b) {
         if (a['isCompleted'] && !b['isCompleted']) return 1;
@@ -277,7 +261,6 @@ class _TaskDetailState extends State<TaskDetail> {
       });
   }
 
-  // Metode _selectDate yang diperbarui untuk menyimpan tanggal tanpa jam
   Future<void> _selectDate(BuildContext context) async {
     DateTime? selectedDate = widget.task['due_date'] != null
         ? DateTime.parse(widget.task['due_date'])
@@ -299,7 +282,6 @@ class _TaskDetailState extends State<TaskDetail> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Header with "Select date" text
                     Padding(
                       padding:
                           const EdgeInsets.only(top: 20, left: 20, right: 20),
@@ -314,8 +296,6 @@ class _TaskDetailState extends State<TaskDetail> {
                         ),
                       ),
                     ),
-
-                    // Selected date display with edit button
                     Container(
                       padding:
                           EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -336,15 +316,11 @@ class _TaskDetailState extends State<TaskDetail> {
                               color: Colors.white,
                               size: 24,
                             ),
-                            onPressed: () {
-                              // Allow manual date entry
-                            },
+                            onPressed: () {},
                           ),
                         ],
                       ),
                     ),
-
-                    // Custom Calendar
                     Container(
                       decoration: BoxDecoration(
                         color: WarnaUtama,
@@ -355,7 +331,6 @@ class _TaskDetailState extends State<TaskDetail> {
                       ),
                       child: Column(
                         children: [
-                          // Month and Year header with navigation
                           Container(
                             padding: EdgeInsets.symmetric(vertical: 8),
                             decoration: BoxDecoration(
@@ -402,8 +377,6 @@ class _TaskDetailState extends State<TaskDetail> {
                               ],
                             ),
                           ),
-
-                          // Day of week headers
                           Padding(
                             padding: const EdgeInsets.only(
                                 top: 16, left: 16, right: 16),
@@ -436,8 +409,6 @@ class _TaskDetailState extends State<TaskDetail> {
                               ],
                             ),
                           ),
-
-                          // Calendar grid
                           Padding(
                             padding: const EdgeInsets.all(8.0),
                             child: Column(
@@ -449,8 +420,6 @@ class _TaskDetailState extends State<TaskDetail> {
                               }),
                             ),
                           ),
-
-                          // Action buttons
                           Padding(
                             padding: const EdgeInsets.all(16),
                             child: Row(
@@ -495,7 +464,6 @@ class _TaskDetailState extends State<TaskDetail> {
 
     if (result != null) {
       try {
-        // Jika ada waktu yang sudah diset, gunakan waktu tersebut
         TimeOfDay? existingTime;
         if (widget.task['time'] != null) {
           final timeParts = widget.task['time'].split(':');
@@ -505,7 +473,6 @@ class _TaskDetailState extends State<TaskDetail> {
           );
         }
 
-        // Buat DateTime dengan waktu yang ada atau waktu default
         final localDateTime = DateTime(
           result.year,
           result.month,
@@ -514,7 +481,6 @@ class _TaskDetailState extends State<TaskDetail> {
           existingTime?.minute ?? 0,
         );
 
-        // Format tanggal lokal untuk disimpan (tanpa konversi UTC)
         final dateString =
             "${result.year}-${result.month.toString().padLeft(2, '0')}-${result.day.toString().padLeft(2, '0')}";
 
@@ -530,7 +496,6 @@ class _TaskDetailState extends State<TaskDetail> {
           widget.task['due_date'] = dateString;
         });
 
-        // Schedule notification with the new date
         await _scheduleNotification();
 
         widget.onTaskUpdated();
@@ -554,38 +519,24 @@ class _TaskDetailState extends State<TaskDetail> {
     }
   }
 
-  // Helper method to build calendar grid
   List<Widget> _buildCalendarGrid(
       DateTime currentMonth, Function(DateTime) onSelectDate) {
-    // Get the first day of the month
     final firstDayOfMonth = DateTime(currentMonth.year, currentMonth.month, 1);
-
-    // Get the day of week for the first day (0 = Sunday, 6 = Saturday)
     final firstWeekday = firstDayOfMonth.weekday % 7;
-
-    // Get the number of days in the month
     final daysInMonth =
         DateTime(currentMonth.year, currentMonth.month + 1, 0).day;
-
-    // Get the number of days in the previous month
     final daysInPrevMonth =
         DateTime(currentMonth.year, currentMonth.month, 0).day;
 
-    // Calculate the number of rows needed (always 6 for consistency)
     const numRows = 6;
-
     List<Widget> rows = [];
-
     int day = 1 - firstWeekday;
 
-    // Build each row
     for (int row = 0; row < numRows; row++) {
       List<Widget> rowChildren = [];
 
-      // Build each day cell in the row
       for (int col = 0; col < 7; col++) {
         if (day <= 0) {
-          // Previous month
           final prevMonthDay = daysInPrevMonth + day;
           rowChildren.add(
             _buildDayCell(
@@ -597,7 +548,6 @@ class _TaskDetailState extends State<TaskDetail> {
             ),
           );
         } else if (day > daysInMonth) {
-          // Next month
           final nextMonthDay = day - daysInMonth;
           rowChildren.add(
             _buildDayCell(
@@ -609,7 +559,6 @@ class _TaskDetailState extends State<TaskDetail> {
             ),
           );
         } else {
-          // Current month
           final date = DateTime(currentMonth.year, currentMonth.month, day);
           final isSelected = date.year == currentMonth.year &&
               date.month == currentMonth.month &&
@@ -639,7 +588,6 @@ class _TaskDetailState extends State<TaskDetail> {
     return rows;
   }
 
-  // Helper method to build a day cell
   Widget _buildDayCell({
     required int day,
     required bool isCurrentMonth,
@@ -647,7 +595,6 @@ class _TaskDetailState extends State<TaskDetail> {
     required VoidCallback onTap,
     required DateTime currentMonth,
   }) {
-    // Tambahkan pengecekan untuk hari ini
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final currentDate = DateTime(currentMonth.year, currentMonth.month, day);
@@ -689,7 +636,6 @@ class _TaskDetailState extends State<TaskDetail> {
     );
   }
 
-  // Ganti metode _selectTime untuk menyimpan waktu dalam format yang benar
   Future<void> _selectTime(BuildContext context) async {
     String? currentTimeString = widget.task['time'];
     TimeOfDay? selectedTime;
@@ -733,7 +679,6 @@ class _TaskDetailState extends State<TaskDetail> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Header
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: Text(
@@ -745,14 +690,11 @@ class _TaskDetailState extends State<TaskDetail> {
                         ),
                       ),
                     ),
-
-                    // Time spinner
                     Container(
                       height: 200,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          // Hour spinner
                           _buildTimeSpinner(
                             value: selectedHour,
                             minValue: 0,
@@ -764,8 +706,6 @@ class _TaskDetailState extends State<TaskDetail> {
                             },
                             format: (value) => value.toString().padLeft(2, '0'),
                           ),
-
-                          // Separator
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 10),
                             child: Text(
@@ -777,8 +717,6 @@ class _TaskDetailState extends State<TaskDetail> {
                               ),
                             ),
                           ),
-
-                          // Minute spinner
                           _buildTimeSpinner(
                             value: selectedMinute,
                             minValue: 0,
@@ -793,10 +731,7 @@ class _TaskDetailState extends State<TaskDetail> {
                         ],
                       ),
                     ),
-
                     SizedBox(height: 16),
-
-                    // Action buttons
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: Row(
@@ -896,22 +831,18 @@ class _TaskDetailState extends State<TaskDetail> {
       }
     } else if (result is TimeOfDay) {
       try {
-        // Simpan waktu lokal yang dipilih user (misal 20:41)
         final localTimeString =
             '${result.hour.toString().padLeft(2, '0')}:${result.minute.toString().padLeft(2, '0')}:00';
 
-        // Simpan ke database dalam waktu lokal
         await Supabase.instance.client.from('tasks').update({
-          'time': localTimeString, // Simpan 20:41 ke database
+          'time': localTimeString,
           'updated_at': DateTime.now().toIso8601String(),
         }).eq('id', widget.task['id']);
 
         setState(() {
-          widget.task['time'] =
-              localTimeString; // Update state dengan waktu lokal
+          widget.task['time'] = localTimeString;
         });
 
-        // Schedule notification with the updated time
         await _scheduleNotification();
 
         widget.onTaskUpdated();
@@ -935,7 +866,6 @@ class _TaskDetailState extends State<TaskDetail> {
     }
   }
 
-  // Widget untuk membuat spinner waktu
   Widget _buildTimeSpinner({
     required int value,
     required int minValue,
@@ -967,20 +897,16 @@ class _TaskDetailState extends State<TaskDetail> {
         blendMode: BlendMode.dstOut,
         child: Stack(
           children: [
-            // Divider lines with increased thickness
             Positioned.fill(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                      height: 2, color: WarnaSecondary), // Increased thickness
+                  Container(height: 2, color: WarnaSecondary),
                   SizedBox(height: 48),
-                  Container(
-                      height: 2, color: WarnaSecondary), // Increased thickness
+                  Container(height: 2, color: WarnaSecondary),
                 ],
               ),
             ),
-            // Scrollable list
             ListWheelScrollView(
               controller:
                   FixedExtentScrollController(initialItem: value - minValue),
@@ -1014,31 +940,26 @@ class _TaskDetailState extends State<TaskDetail> {
     );
   }
 
-  // Helper method to format date for display - format DD MMM YY
   String _formatDate(String? dateString) {
     if (dateString == null) return 'No Date';
     try {
       final date = DateTime.parse(dateString);
-      // Format tanggal sebagai "DD MMM YY" (contoh: "14 Mar 25")
       return "${date.day.toString().padLeft(2, '0')} ${DateFormat('MMM').format(date)} ${(date.year % 100).toString().padLeft(2, '0')}";
     } catch (e) {
       return dateString;
     }
   }
 
-  // Helper method to format time for display - only show HH:MM
   String _formatTime(String? timeString) {
     if (timeString == null) return 'No';
 
     try {
-      // Cek apakah format waktu berisi tanggal (format lama)
       if (timeString.contains('T') || timeString.contains(' ')) {
         final time = DateTime.parse(timeString);
         final hour = time.hour.toString().padLeft(2, '0');
         final minute = time.minute.toString().padLeft(2, '0');
         return "$hour:$minute";
       } else {
-        // Format HH:MM:SS - hanya tampilkan HH:MM
         final parts = timeString.split(':');
         if (parts.length >= 2) {
           return "${parts[0]}:${parts[1]}";
@@ -1046,7 +967,6 @@ class _TaskDetailState extends State<TaskDetail> {
         return timeString;
       }
     } catch (e) {
-      // Jika parsing gagal, tampilkan string asli
       return timeString;
     }
   }
@@ -1069,7 +989,6 @@ class _TaskDetailState extends State<TaskDetail> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Header
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: Text(
@@ -1081,8 +1000,6 @@ class _TaskDetailState extends State<TaskDetail> {
                     ),
                   ),
                 ),
-
-                // Notes TextField
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: TextField(
@@ -1107,8 +1024,6 @@ class _TaskDetailState extends State<TaskDetail> {
                     ),
                   ),
                 ),
-
-                // Action buttons
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: Row(
@@ -1187,7 +1102,6 @@ class _TaskDetailState extends State<TaskDetail> {
     }
   }
 
-  // Method untuk load semua attachment URLs
   Future<void> _loadAttachmentUrls() async {
     for (String path in _attachmentPaths) {
       final url = await Supabase.instance.client.storage
@@ -1199,17 +1113,14 @@ class _TaskDetailState extends State<TaskDetail> {
     }
   }
 
-  // Update method handle attachment
   Future<void> _handleAttachment() async {
-    // Tampilkan dialog di tengah layar untuk memilih sumber
     final source = await showDialog<ImageSource>(
       context: context,
       builder: (BuildContext context) {
         return Dialog(
           backgroundColor: Colors.transparent,
           child: Container(
-            width:
-                MediaQuery.of(context).size.width * 0.8, // 80% dari lebar layar
+            width: MediaQuery.of(context).size.width * 0.8,
             decoration: BoxDecoration(
               color: WarnaUtama2,
               borderRadius: BorderRadius.circular(16),
@@ -1217,7 +1128,6 @@ class _TaskDetailState extends State<TaskDetail> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Header
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: Text(
@@ -1229,7 +1139,6 @@ class _TaskDetailState extends State<TaskDetail> {
                     ),
                   ),
                 ),
-                // Gallery option
                 ListTile(
                   leading: Container(
                     padding: EdgeInsets.all(8),
@@ -1245,8 +1154,6 @@ class _TaskDetailState extends State<TaskDetail> {
                   ),
                   onTap: () => Navigator.pop(context, ImageSource.gallery),
                 ),
-
-                // Camera option
                 ListTile(
                   leading: Container(
                     padding: EdgeInsets.all(8),
@@ -1262,8 +1169,6 @@ class _TaskDetailState extends State<TaskDetail> {
                   ),
                   onTap: () => Navigator.pop(context, ImageSource.camera),
                 ),
-
-                // Cancel button
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: TextButton(
@@ -1297,29 +1202,24 @@ class _TaskDetailState extends State<TaskDetail> {
       final User? user = Supabase.instance.client.auth.currentUser;
       if (user == null) throw Exception('User not authenticated');
 
-      // Generate nama file baru
       final String fileName =
           '${user.id}/${DateTime.now().millisecondsSinceEpoch}${path.extension(image.path)}';
       final file = File(image.path);
 
-      // Upload file baru
       await Supabase.instance.client.storage
           .from('attachments')
           .upload(fileName, file);
 
-      // Get signed URL
       final String signedUrl = await Supabase.instance.client.storage
           .from('attachments')
           .createSignedUrl(fileName, 3600);
 
-      // Update database dengan menambahkan attachment baru ke array
       _attachmentPaths.add(fileName);
       await Supabase.instance.client.from('tasks').update({
         'attachments': _attachmentPaths,
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', widget.task['id']);
 
-      // Update state
       setState(() {
         _attachmentUrls.add(signedUrl);
         _isUploading = false;
@@ -1347,9 +1247,7 @@ class _TaskDetailState extends State<TaskDetail> {
     }
   }
 
-  // Update method remove attachment
   Future<void> _removeAttachment(int index) async {
-    // Tampilkan dialog konfirmasi
     bool? confirmDelete = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
@@ -1427,25 +1325,21 @@ class _TaskDetailState extends State<TaskDetail> {
       },
     );
 
-    // Jika user membatalkan, keluar dari method
     if (confirmDelete != true) return;
 
     try {
       final String filePath = _attachmentPaths[index];
 
-      // Hapus file dari storage
       await Supabase.instance.client.storage
           .from('attachments')
           .remove([filePath]);
 
-      // Update database
       _attachmentPaths.removeAt(index);
       await Supabase.instance.client.from('tasks').update({
         'attachments': _attachmentPaths,
         'updated_at': DateTime.now().toIso8601String(),
       }).eq('id', widget.task['id']);
 
-      // Update state
       setState(() {
         _attachmentUrls.removeAt(index);
       });
@@ -1469,13 +1363,9 @@ class _TaskDetailState extends State<TaskDetail> {
     }
   }
 
-  // Update fungsi _getNotificationId
   int _getNotificationId(String uuid) {
-    // Mengambil 5 karakter terakhir dari UUID
     final lastFiveChars = uuid.substring(uuid.length - 5);
-    // Mengkonversi karakter hexadecimal ke integer
     final intValue = int.parse(lastFiveChars, radix: 16);
-    // Menggunakan modulo untuk memastikan nilai selalu di bawah 100000
     return intValue % 100000;
   }
 
@@ -1522,12 +1412,9 @@ class _TaskDetailState extends State<TaskDetail> {
     }
   }
 
-  // Update the notification scheduling to use the reminder time
   Future<void> _scheduleNotification() async {
     if (widget.task['due_date'] == null || widget.task['time'] == null) {
-      // Jika task tidak memiliki due date atau time, pastikan notifikasi sebelumnya dibatalkan
       try {
-        // Gunakan cancelNotificationByTaskId yang baru
         await _notificationService
             .cancelNotificationByTaskId(widget.task['id']);
         print(
@@ -1539,15 +1426,12 @@ class _TaskDetailState extends State<TaskDetail> {
     }
 
     try {
-      // Selalu batalkan notifikasi yang ada untuk task ini terlebih dahulu
-      // untuk memastikan tidak ada notifikasi duplikat
       await _notificationService.cancelNotificationByTaskId(widget.task['id']);
       print('Cancelled existing notifications for task: ${widget.task['id']}');
 
       final time = widget.task['time'].split(':');
       final date = DateTime.parse(widget.task['due_date']);
 
-      // Create scheduled date/time
       final scheduledDateTime = DateTime(
         date.year,
         date.month,
@@ -1556,7 +1440,6 @@ class _TaskDetailState extends State<TaskDetail> {
         int.parse(time[1]),
       );
 
-      // Check if we have a reminder_before setting
       int reminderMinutes = _defaultReminderMinutes;
       if (widget.task['reminder_before'] != null) {
         try {
@@ -1566,12 +1449,10 @@ class _TaskDetailState extends State<TaskDetail> {
         }
       }
 
-      // Calculate reminder time (task time minus reminder minutes)
       final reminderDateTime =
           scheduledDateTime.subtract(Duration(minutes: reminderMinutes));
       final now = DateTime.now();
 
-      // Only schedule if reminder time is in the future
       if (reminderDateTime.isAfter(now)) {
         final notificationId = _getNotificationId(widget.task['id']);
         await _notificationService.scheduleTaskNotification(
@@ -1591,7 +1472,6 @@ class _TaskDetailState extends State<TaskDetail> {
             'Reminder time is in the past, not scheduling: $reminderDateTime');
         print('Current time: $now');
 
-        // Show a message to the user if the reminder time is in the past
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -1619,7 +1499,6 @@ class _TaskDetailState extends State<TaskDetail> {
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.white),
           onPressed: () {
-            // Call the callback to refresh the parent page before popping
             widget.onTaskUpdated();
             Navigator.pop(context);
           },
@@ -1704,14 +1583,10 @@ class _TaskDetailState extends State<TaskDetail> {
                               builder: (context) => KategoriPage(),
                             ),
                           ).then((_) async {
-                            // Refresh kategori
                             await _loadCategories();
 
-                            // Reload task data untuk memastikan kategori terupdate
-                            // Penting jika task ini menggunakan kategori yang diubah namanya
                             await _reloadTaskData();
 
-                            // Beritahu parent screen bahwa mungkin ada perubahan
                             widget.onTaskUpdated();
                           });
                         } else if (selectedValue != null) {
@@ -1756,8 +1631,7 @@ class _TaskDetailState extends State<TaskDetail> {
               Wrap(
                 alignment: WrapAlignment.start,
                 crossAxisAlignment: WrapCrossAlignment.center,
-                spacing:
-                    10, // Horizontal spacing between title and priority button
+                spacing: 10,
                 children: [
                   Text(
                     widget.task['title'] ?? '',
@@ -1938,7 +1812,6 @@ class _TaskDetailState extends State<TaskDetail> {
                       value: sortedSubtasks[i]['isCompleted'],
                       onChanged: (bool? value) {
                         if (value != null) {
-                          // Cari index asli di list subtasks
                           final originalIndex = subtasks.indexWhere((task) =>
                               task['title'] == sortedSubtasks[i]['title']);
                           _toggleSubtask(originalIndex);
@@ -1966,7 +1839,6 @@ class _TaskDetailState extends State<TaskDetail> {
                   trailing: IconButton(
                     icon: Icon(Icons.delete, color: Colors.white70),
                     onPressed: () {
-                      // Cari index asli di list subtasks
                       final originalIndex = subtasks.indexWhere((task) =>
                           task['title'] == sortedSubtasks[i]['title']);
                       _deleteSubtask(originalIndex);
@@ -2027,8 +1899,6 @@ class _TaskDetailState extends State<TaskDetail> {
                       ),
                     ),
               SizedBox(height: 20),
-
-              // Card 1: Date and Time Settings
               Container(
                 decoration: BoxDecoration(
                   color: WarnaUtama2,
@@ -2037,7 +1907,6 @@ class _TaskDetailState extends State<TaskDetail> {
                 margin: EdgeInsets.only(bottom: 16),
                 child: Column(
                   children: [
-                    // Due Date Row
                     ListTile(
                       leading: Icon(
                         Icons.calendar_today,
@@ -2068,10 +1937,7 @@ class _TaskDetailState extends State<TaskDetail> {
                       ),
                       onTap: () => _selectDate(context),
                     ),
-
                     Divider(height: 1, color: WarnaUtama.withOpacity(0.3)),
-
-                    // Time Row
                     ListTile(
                       leading: Icon(
                         Icons.access_time,
@@ -2102,12 +1968,8 @@ class _TaskDetailState extends State<TaskDetail> {
                       ),
                       onTap: () => _selectTime(context),
                     ),
-
-                    // Only show Reminder option if time is set
                     if (widget.task['time'] != null) ...[
                       Divider(height: 1, color: WarnaUtama.withOpacity(0.3)),
-
-                      // Reminder At Row
                       ListTile(
                         leading: Icon(
                           Icons.notifications_active,
@@ -2145,7 +2007,6 @@ class _TaskDetailState extends State<TaskDetail> {
                   ],
                 ),
               ),
-
               Container(
                 decoration: BoxDecoration(
                   color: WarnaUtama2,
@@ -2210,7 +2071,6 @@ class _TaskDetailState extends State<TaskDetail> {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Header Attachments dengan Add button
                         ListTile(
                           leading: Icon(
                             Icons.attach_file,
@@ -2252,8 +2112,6 @@ class _TaskDetailState extends State<TaskDetail> {
                           ),
                           onTap: _handleAttachment,
                         ),
-
-                        // Grid Preview Images
                         if (_attachmentUrls.isNotEmpty)
                           Padding(
                             padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -2262,9 +2120,8 @@ class _TaskDetailState extends State<TaskDetail> {
                                 final double itemWidth =
                                     (constraints.maxWidth - 16) / 3;
                                 return Wrap(
-                                  spacing:
-                                      8, // gap between adjacent items horizontally
-                                  runSpacing: 8, // gap between lines
+                                  spacing: 8,
+                                  runSpacing: 8,
                                   children: List.generate(
                                       _attachmentUrls.length, (index) {
                                     return Container(
@@ -2280,7 +2137,6 @@ class _TaskDetailState extends State<TaskDetail> {
                                       child: Stack(
                                         fit: StackFit.expand,
                                         children: [
-                                          // Image
                                           ClipRRect(
                                             borderRadius:
                                                 BorderRadius.circular(8),
@@ -2349,8 +2205,6 @@ class _TaskDetailState extends State<TaskDetail> {
                                               },
                                             ),
                                           ),
-
-                                          // Tap to View Full Image
                                           Positioned.fill(
                                             child: Material(
                                               color: Colors.transparent,
@@ -2370,7 +2224,6 @@ class _TaskDetailState extends State<TaskDetail> {
                                                         child: Stack(
                                                           fit: StackFit.expand,
                                                           children: [
-                                                            // Image with InteractiveViewer for zoom and pan
                                                             InteractiveViewer(
                                                               minScale: 0.5,
                                                               maxScale: 4.0,
@@ -2386,7 +2239,6 @@ class _TaskDetailState extends State<TaskDetail> {
                                                                 },
                                                               ),
                                                             ),
-                                                            // Close button
                                                             Positioned(
                                                               top: 40,
                                                               right: 20,
@@ -2425,8 +2277,6 @@ class _TaskDetailState extends State<TaskDetail> {
                                               ),
                                             ),
                                           ),
-
-                                          // Delete Button - Pindahkan ke layer paling atas
                                           Positioned(
                                             top: 4,
                                             right: 4,
@@ -2473,9 +2323,7 @@ class _TaskDetailState extends State<TaskDetail> {
     );
   }
 
-  // Add method to confirm and delete task
   Future<void> _confirmDeleteTask() async {
-    // Show confirmation dialog
     bool? confirmDelete = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
@@ -2553,17 +2401,14 @@ class _TaskDetailState extends State<TaskDetail> {
       },
     );
 
-    // If user confirmed deletion
     if (confirmDelete == true) {
       try {
-        // First delete all attachments from storage
         if (_attachmentPaths.isNotEmpty) {
           await Supabase.instance.client.storage
               .from('attachments')
               .remove(_attachmentPaths);
         }
 
-        // Cancel any scheduled notifications
         if (widget.task['due_date'] != null && widget.task['time'] != null) {
           try {
             await _notificationService
@@ -2573,16 +2418,13 @@ class _TaskDetailState extends State<TaskDetail> {
           }
         }
 
-        // Then delete the task
         await Supabase.instance.client
             .from('tasks')
             .delete()
             .eq('id', widget.task['id']);
 
-        // Call the callback to update the parent screen
         widget.onTaskUpdated();
 
-        // Show success message and navigate back
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Task deleted successfully'),
@@ -2590,7 +2432,6 @@ class _TaskDetailState extends State<TaskDetail> {
           ),
         );
 
-        // Return to previous screen
         Navigator.pop(context);
       } catch (error) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -2603,7 +2444,6 @@ class _TaskDetailState extends State<TaskDetail> {
     }
   }
 
-  // Add method to format reminder time
   String _formatReminderTime(String? reminderTime) {
     if (reminderTime == null || reminderTime.isEmpty) return '-';
 
@@ -2630,9 +2470,7 @@ class _TaskDetailState extends State<TaskDetail> {
     }
   }
 
-  // Add method to handle selecting reminder time
   Future<void> _selectReminderTime(BuildContext context) async {
-    // Periksa apakah tugas terlalu dekat dengan waktu sekarang
     List<int> availableOptions = [];
 
     if (widget.task['due_date'] != null && widget.task['time'] != null) {
@@ -2651,13 +2489,11 @@ class _TaskDetailState extends State<TaskDetail> {
         final now = DateTime.now();
         final minutesUntilTask = taskDateTime.difference(now).inMinutes;
 
-        // Hanya tampilkan opsi reminder yang masih valid (waktunya belum lewat)
         availableOptions = _reminderOptions
             .where((minutes) => minutes < minutesUntilTask)
             .toList();
 
         if (availableOptions.isEmpty) {
-          // Tampilkan pesan peringatan
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Task is too soon! Cannot set a reminder.'),
@@ -2665,7 +2501,7 @@ class _TaskDetailState extends State<TaskDetail> {
             ),
           );
 
-          return; // Keluar dari metode
+          return;
         }
       } catch (e) {
         print('Error checking available reminder options: $e');
@@ -2688,7 +2524,6 @@ class _TaskDetailState extends State<TaskDetail> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Header
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: Text(
@@ -2700,8 +2535,6 @@ class _TaskDetailState extends State<TaskDetail> {
                         ),
                       ),
                     ),
-
-                    // Reminder options
                     Container(
                       constraints: BoxConstraints(
                         maxHeight: MediaQuery.of(context).size.height * 0.5,
@@ -2747,8 +2580,6 @@ class _TaskDetailState extends State<TaskDetail> {
                         ),
                       ),
                     ),
-
-                    // Cancel button
                     Padding(
                       padding: const EdgeInsets.all(16),
                       child: TextButton(
@@ -2773,7 +2604,6 @@ class _TaskDetailState extends State<TaskDetail> {
 
     if (result != null) {
       try {
-        // Periksa apakah reminder masih valid (masih di masa depan)
         final time = widget.task['time'].split(':');
         final date = DateTime.parse(widget.task['due_date']);
 
@@ -2809,7 +2639,6 @@ class _TaskDetailState extends State<TaskDetail> {
           widget.task['reminder_before'] = result.toString();
         });
 
-        // Update the scheduled notification with the new reminder time
         await _scheduleNotification();
 
         widget.onTaskUpdated();

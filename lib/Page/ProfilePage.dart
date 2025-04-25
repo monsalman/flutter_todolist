@@ -56,13 +56,10 @@ class _ProfilePageState extends State<ProfilePage> {
             email = user.email ?? '';
             categories = List<String>.from(data['categories'] ?? []);
 
-            // Handle profile image
             if (data['profile_image_url'] != null) {
               final String storedValue = data['profile_image_url'];
 
-              // Check if the stored value is a full URL or just a filename
               if (storedValue.startsWith('http')) {
-                // It's a URL, extract the filename
                 try {
                   final uri = Uri.parse(storedValue);
                   final pathSegments = uri.pathSegments;
@@ -77,11 +74,9 @@ class _ProfilePageState extends State<ProfilePage> {
                     }
                   }
 
-                  // If filename was extracted, generate fresh URL
                   if (profileImagePath != null) {
                     _generateFreshImageUrl();
                   } else {
-                    // If extraction failed, use the URL directly
                     profileImageUrl = storedValue;
                   }
                 } catch (e) {
@@ -89,7 +84,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   profileImageUrl = storedValue;
                 }
               } else {
-                // It's already just a filename, use it to generate fresh URL
                 profileImagePath = storedValue;
                 _generateFreshImageUrl();
               }
@@ -119,23 +113,18 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final User? user = Supabase.instance.client.auth.currentUser;
       if (user != null) {
-        // Get all completed tasks
         final completedTasks = await Supabase.instance.client
             .from('tasks')
             .select()
             .eq('user_id', user.id)
             .eq('is_completed', true);
 
-        // Get today's date in the format stored in Supabase
         final today = DateTime.now();
         final todayFormatted = DateFormat('yyyy-MM-dd').format(today);
 
-        // Count tasks completed today
         int todayCount = 0;
         for (var task in completedTasks) {
-          // Check if the task has a date_completed field
           if (task['date_completed'] != null) {
-            // Extract just the date part for comparison
             final completedDate =
                 task['date_completed'].toString().split('T')[0];
             if (completedDate == todayFormatted) {
@@ -153,7 +142,6 @@ class _ProfilePageState extends State<ProfilePage> {
       }
     } catch (error) {
       print('Error loading completed tasks: $error');
-      // Continue silently, keeping the default values (0)
     }
   }
 
@@ -163,7 +151,7 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final freshUrl = await Supabase.instance.client.storage
           .from('profile_images')
-          .createSignedUrl(profileImagePath!, 60 * 60); // Valid for 1 hour
+          .createSignedUrl(profileImagePath!, 60 * 60);
 
       if (mounted) {
         setState(() {
@@ -176,7 +164,6 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Future<void> _uploadProfileImage() async {
-    // Show image source selection dialog
     final source = await showDialog<ImageSource>(
       context: context,
       builder: (BuildContext context) {
@@ -191,7 +178,6 @@ class _ProfilePageState extends State<ProfilePage> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Header
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: Text(
@@ -203,7 +189,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     ),
                   ),
                 ),
-                // Gallery option
                 ListTile(
                   leading: Container(
                     padding: EdgeInsets.all(8),
@@ -219,8 +204,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   onTap: () => Navigator.pop(context, ImageSource.gallery),
                 ),
-
-                // Camera option
                 ListTile(
                   leading: Container(
                     padding: EdgeInsets.all(8),
@@ -236,8 +219,6 @@ class _ProfilePageState extends State<ProfilePage> {
                   ),
                   onTap: () => Navigator.pop(context, ImageSource.camera),
                 ),
-
-                // Cancel button
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: TextButton(
@@ -277,7 +258,6 @@ class _ProfilePageState extends State<ProfilePage> {
       final User? user = Supabase.instance.client.auth.currentUser;
       if (user == null) throw Exception('User not authenticated');
 
-      // Get user data to check for existing profile image
       final userData = await Supabase.instance.client
           .from('users')
           .select('profile_image_url')
@@ -286,14 +266,11 @@ class _ProfilePageState extends State<ProfilePage> {
 
       final currentValue = userData['profile_image_url'] as String?;
 
-      // Delete old image if exists
       if (currentValue != null && currentValue.isNotEmpty) {
         try {
           String? fileToDelete;
 
-          // Check if the value is a URL or filename
           if (currentValue.startsWith('http')) {
-            // It's a URL, extract the filename
             try {
               final uri = Uri.parse(currentValue);
               final pathSegments = uri.pathSegments;
@@ -311,11 +288,9 @@ class _ProfilePageState extends State<ProfilePage> {
               print('Error parsing URL: $e');
             }
           } else {
-            // It's already just a filename
             fileToDelete = currentValue;
           }
 
-          // Delete the file if we found a valid filename
           if (fileToDelete != null) {
             print('Attempting to delete old image: $fileToDelete');
             await Supabase.instance.client.storage
@@ -323,7 +298,6 @@ class _ProfilePageState extends State<ProfilePage> {
                 .remove([fileToDelete]);
             print('Old image successfully deleted');
           } else {
-            // Fallback: try to list and find files with user's ID
             final listResult = await Supabase.instance.client.storage
                 .from('profile_images')
                 .list();
@@ -340,16 +314,13 @@ class _ProfilePageState extends State<ProfilePage> {
           }
         } catch (deleteError) {
           print('Error deleting old image: $deleteError');
-          // Continue even if deletion fails
         }
       }
 
-      // Generate unique filename using user ID and timestamp
       final String fileExtension = path.extension(image.path);
       final String fileName =
           '${user.id}_${DateTime.now().millisecondsSinceEpoch}$fileExtension';
 
-      // Upload to profile_images bucket
       final File file = File(image.path);
       await Supabase.instance.client.storage.from('profile_images').upload(
           fileName, file,
@@ -357,23 +328,19 @@ class _ProfilePageState extends State<ProfilePage> {
 
       print('Profile image successfully uploaded');
 
-      // Generate a signed URL for immediate display (not for storage)
       final String signedUrl = await Supabase.instance.client.storage
           .from('profile_images')
-          .createSignedUrl(fileName, 60 * 60); // Valid for 1 hour
+          .createSignedUrl(fileName, 60 * 60);
 
-      // Update user profile with just the filename
       await Supabase.instance.client
           .from('users')
           .update({'profile_image_url': fileName}).eq('id', user.id);
 
       print('Profile image filename stored in database');
 
-      // Update local state
       setState(() {
-        profileImageUrl = signedUrl; // Use the signed URL for display
-        profileImagePath =
-            fileName; // Store the filename for future token generation
+        profileImageUrl = signedUrl;
+        profileImagePath = fileName;
         isUploadingImage = false;
       });
 
@@ -388,7 +355,6 @@ class _ProfilePageState extends State<ProfilePage> {
     } catch (error) {
       print('Error uploading profile image: $error');
 
-      // More detailed error logging
       if (error is StorageException) {
         print('Storage error code: ${error.statusCode}');
         print('Storage error message: ${error.message}');
@@ -449,7 +415,6 @@ class _ProfilePageState extends State<ProfilePage> {
                             children: [
                               Stack(
                                 children: [
-                                  // Profile image
                                   GestureDetector(
                                     onTap: _uploadProfileImage,
                                     child: CircleAvatar(
@@ -468,7 +433,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                           : null,
                                     ),
                                   ),
-                                  // Edit icon
                                   Positioned(
                                     bottom: 0,
                                     right: 0,
@@ -485,7 +449,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                       ),
                                     ),
                                   ),
-                                  // Loading indicator
                                   if (isUploadingImage)
                                     Positioned.fill(
                                       child: Container(
@@ -636,7 +599,6 @@ class _ProfilePageState extends State<ProfilePage> {
                                 MaterialPageRoute(
                                     builder: (context) => KategoriPage()),
                               ).then((_) {
-                                // Refresh data when returning from KategoriPage
                                 _loadUserData();
                                 _loadCompletedTasksData();
                               });
@@ -689,8 +651,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                     actions: [
                                       TextButton(
                                         onPressed: () {
-                                          Navigator.of(context)
-                                              .pop(); // Close dialog
+                                          Navigator.of(context).pop();
                                         },
                                         child: Text(
                                           'Batal',
@@ -701,8 +662,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                       ),
                                       TextButton(
                                         onPressed: () async {
-                                          Navigator.of(context)
-                                              .pop(); // Close dialog
+                                          Navigator.of(context).pop();
                                           try {
                                             await Supabase.instance.client.auth
                                                 .signOut();
