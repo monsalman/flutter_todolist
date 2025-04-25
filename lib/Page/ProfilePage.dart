@@ -27,6 +27,7 @@ class _ProfilePageState extends State<ProfilePage> {
   bool isLoading = true;
   int todayCompleted = 0;
   int totalCompleted = 0;
+  int overdueCount = 0;
   String? profileImageUrl;
   String? profileImagePath;
   bool isUploadingImage = false;
@@ -113,11 +114,13 @@ class _ProfilePageState extends State<ProfilePage> {
     try {
       final User? user = Supabase.instance.client.auth.currentUser;
       if (user != null) {
-        final completedTasks = await Supabase.instance.client
+        final tasks = await Supabase.instance.client
             .from('tasks')
             .select()
-            .eq('user_id', user.id)
-            .eq('is_completed', true);
+            .eq('user_id', user.id);
+
+        final completedTasks =
+            tasks.where((task) => task['is_completed'] == true).toList();
 
         final today = DateTime.now();
         final todayFormatted = DateFormat('yyyy-MM-dd').format(today);
@@ -133,15 +136,34 @@ class _ProfilePageState extends State<ProfilePage> {
           }
         }
 
+        final now = DateTime.now();
+        final todayDate = DateTime(now.year, now.month, now.day);
+
+        int overdue = 0;
+        for (var task in tasks) {
+          if (task['is_completed'] == true) continue;
+
+          if (task['due_date'] != null) {
+            final taskDate = DateTime.parse(task['due_date']).toLocal();
+            final taskDay =
+                DateTime(taskDate.year, taskDate.month, taskDate.day);
+
+            if (taskDay.isBefore(todayDate)) {
+              overdue++;
+            }
+          }
+        }
+
         if (mounted) {
           setState(() {
             totalCompleted = completedTasks.length;
             todayCompleted = todayCount;
+            overdueCount = overdue;
           });
         }
       }
     } catch (error) {
-      print('Error loading completed tasks: $error');
+      print('Error loading tasks data: $error');
     }
   }
 
@@ -587,6 +609,38 @@ class _ProfilePageState extends State<ProfilePage> {
                               ),
                             ),
                           ],
+                        ),
+                        SizedBox(height: 16),
+                        Container(
+                          width: double.infinity,
+                          height: 100,
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withOpacity(0.25),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(
+                                'Overdue Tasks',
+                                style: TextStyle(
+                                  color: Colors.white70,
+                                  fontSize: 14,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              SizedBox(height: 8),
+                              Text(
+                                overdueCount.toString(),
+                                style: TextStyle(
+                                  color: Colors.redAccent,
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                         SizedBox(height: 16),
                         Container(
