@@ -648,6 +648,25 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
       }
     }
 
+    // Get early/late status for completed tasks
+    String completionStatus = '';
+    if (isCompleted &&
+        task['due_date'] != null &&
+        task['date_completed'] != null) {
+      final dueDate = DateTime.parse(task['due_date']).toLocal();
+      final completedDate = DateTime.parse(task['date_completed']).toLocal();
+
+      final dueDay = DateTime(dueDate.year, dueDate.month, dueDate.day);
+      final completedDay =
+          DateTime(completedDate.year, completedDate.month, completedDate.day);
+
+      if (completedDay.isBefore(dueDay)) {
+        completionStatus = 'Early';
+      } else if (completedDay.isAfter(dueDay)) {
+        completionStatus = 'Late';
+      }
+    }
+
     final bool hasUncompletedSubtasks = _hasUncompletedSubtasks(task);
 
     final Color textColor = isCompleted ? Colors.white38 : Colors.white;
@@ -675,168 +694,195 @@ class _TaskPageState extends State<TaskPage> with TickerProviderStateMixin {
         borderRadius: BorderRadius.circular(15),
       ),
       color: WarnaUtama2,
-      child: ListTile(
-        contentPadding: EdgeInsets.only(left: 4, right: 10),
-        horizontalTitleGap: 0,
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => TaskDetail(
-                task: task,
-                onTaskUpdated: () {
-                  _loadCategories();
-                  _loadTasks();
-                },
-              ),
-            ),
-          );
-        },
-        leading: Transform.scale(
-          scale: 1.2,
-          child: Tooltip(
-            message: hasUncompletedSubtasks && !isCompleted
-                ? 'Complete all subtasks first'
-                : isCompleted
-                    ? 'Mark as uncompleted'
-                    : 'Mark as completed',
-            child: MouseRegion(
-              cursor: hasUncompletedSubtasks && !isCompleted
-                  ? SystemMouseCursors.forbidden
-                  : SystemMouseCursors.click,
-              child: Checkbox(
-                value: isCompleted,
-                onChanged: (bool? value) {
-                  if (value != null) {
-                    final taskId = task['id'];
-                    if (taskId != null) {
-                      _updateTaskStatus(taskId, value);
-                    }
-                  }
-                },
-                activeColor: checkboxColor,
-                checkColor: WarnaUtama,
-                side: BorderSide(
-                  color: checkboxColor,
-                  width: 2,
-                ),
-                fillColor: MaterialStateProperty.resolveWith<Color>(
-                  (Set<MaterialState> states) {
-                    if (states.contains(MaterialState.selected)) {
-                      return checkboxColor;
-                    }
-                    return Colors.transparent;
-                  },
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-            ),
-          ),
-        ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  task['title'] ?? '',
-                  style: TextStyle(
-                    color: textColor,
-                    fontSize: 16,
-                    decoration: isCompleted ? TextDecoration.lineThrough : null,
-                    decorationColor: checkboxColor,
-                    decorationThickness: 1.5,
+      child: Stack(
+        children: [
+          ListTile(
+            contentPadding: EdgeInsets.only(left: 4, right: 10),
+            horizontalTitleGap: 0,
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TaskDetail(
+                    task: task,
+                    onTaskUpdated: () {
+                      _loadCategories();
+                      _loadTasks();
+                    },
                   ),
                 ),
-                SizedBox(width: 4),
-                if (task['priority'] != null)
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: _getPriorityColor(task['priority']),
-                      shape: BoxShape.circle,
+              );
+            },
+            leading: Transform.scale(
+              scale: 1.2,
+              child: Tooltip(
+                message: hasUncompletedSubtasks && !isCompleted
+                    ? 'Complete all subtasks first'
+                    : isCompleted
+                        ? 'Mark as uncompleted'
+                        : 'Mark as completed',
+                child: MouseRegion(
+                  cursor: hasUncompletedSubtasks && !isCompleted
+                      ? SystemMouseCursors.forbidden
+                      : SystemMouseCursors.click,
+                  child: Checkbox(
+                    value: isCompleted,
+                    onChanged: (bool? value) {
+                      if (value != null) {
+                        final taskId = task['id'];
+                        if (taskId != null) {
+                          _updateTaskStatus(taskId, value);
+                        }
+                      }
+                    },
+                    activeColor: checkboxColor,
+                    checkColor: WarnaUtama,
+                    side: BorderSide(
+                      color: checkboxColor,
+                      width: 2,
+                    ),
+                    fillColor: MaterialStateProperty.resolveWith<Color>(
+                      (Set<MaterialState> states) {
+                        if (states.contains(MaterialState.selected)) {
+                          return checkboxColor;
+                        }
+                        return Colors.transparent;
+                      },
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(4),
                     ),
                   ),
-              ],
+                ),
+              ),
             ),
-            SizedBox(height: 4),
-            Row(
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Wrap(
-                  spacing: 5,
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    if (task['time'] != null)
-                      Text(
-                        '${task['time']}'.substring(0, 5),
-                        style: TextStyle(
-                          color: dateTimeColor,
-                          fontSize: 12,
-                        ),
+                    Text(
+                      task['title'] ?? '',
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 16,
+                        decoration:
+                            isCompleted ? TextDecoration.lineThrough : null,
+                        decorationColor: checkboxColor,
+                        decorationThickness: 1.5,
                       ),
-                    if (!isToday && task['due_date'] != null)
-                      Text(
-                        '${DateTime.parse(task['due_date']).toLocal().toString().substring(8, 10)}-${DateTime.parse(task['due_date']).toLocal().toString().substring(5, 7)}',
-                        style: TextStyle(
-                          color: dateTimeColor,
-                          fontSize: 12,
-                        ),
-                      ),
-                    if (isTimeOverdue && !isCompleted)
-                      Text(
-                        _getOverdueText(task),
-                        style: TextStyle(
-                          color: Colors.redAccent,
-                          fontSize: 12,
+                    ),
+                    SizedBox(width: 4),
+                    if (task['priority'] != null)
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          color: _getPriorityColor(task['priority']),
+                          shape: BoxShape.circle,
                         ),
                       ),
                   ],
                 ),
-                SizedBox(width: 8),
+                SizedBox(height: 4),
                 Row(
                   children: [
-                    if (task['subtasks'] != null &&
-                        (task['subtasks'] as List).isNotEmpty)
-                      Padding(
-                        padding: EdgeInsets.only(right: 4),
-                        child: Icon(
-                          Icons.checklist,
-                          color: isTimeOverdue && !isCompleted
-                              ? Colors.redAccent
-                              : dateTimeColor,
-                          size: 14,
-                        ),
-                      ),
-                    if (task['notes'] != null &&
-                        task['notes'].toString().isNotEmpty)
-                      Padding(
-                        padding: EdgeInsets.only(right: 4),
-                        child: Icon(
-                          Icons.sticky_note_2,
-                          color: isTimeOverdue && !isCompleted
-                              ? Colors.redAccent
-                              : dateTimeColor,
-                          size: 14,
-                        ),
-                      ),
-                    if (task['attachments'] != null &&
-                        (task['attachments'] as List).isNotEmpty)
-                      Icon(
-                        Icons.attach_file,
-                        color: isTimeOverdue && !isCompleted
-                            ? Colors.redAccent
-                            : dateTimeColor,
-                        size: 14,
-                      ),
+                    Wrap(
+                      spacing: 5,
+                      children: [
+                        if (task['time'] != null)
+                          Text(
+                            '${task['time']}'.substring(0, 5),
+                            style: TextStyle(
+                              color: dateTimeColor,
+                              fontSize: 12,
+                            ),
+                          ),
+                        if (!isToday && task['due_date'] != null)
+                          Text(
+                            '${DateTime.parse(task['due_date']).toLocal().toString().substring(8, 10)}-${DateTime.parse(task['due_date']).toLocal().toString().substring(5, 7)}',
+                            style: TextStyle(
+                              color: dateTimeColor,
+                              fontSize: 12,
+                            ),
+                          ),
+                        if (isTimeOverdue && !isCompleted)
+                          Text(
+                            _getOverdueText(task),
+                            style: TextStyle(
+                              color: Colors.redAccent,
+                              fontSize: 12,
+                            ),
+                          ),
+                      ],
+                    ),
+                    SizedBox(width: 8),
+                    Row(
+                      children: [
+                        if (task['subtasks'] != null &&
+                            (task['subtasks'] as List).isNotEmpty)
+                          Padding(
+                            padding: EdgeInsets.only(right: 4),
+                            child: Icon(
+                              Icons.checklist,
+                              color: isTimeOverdue && !isCompleted
+                                  ? Colors.redAccent
+                                  : dateTimeColor,
+                              size: 14,
+                            ),
+                          ),
+                        if (task['notes'] != null &&
+                            task['notes'].toString().isNotEmpty)
+                          Padding(
+                            padding: EdgeInsets.only(right: 4),
+                            child: Icon(
+                              Icons.sticky_note_2,
+                              color: isTimeOverdue && !isCompleted
+                                  ? Colors.redAccent
+                                  : dateTimeColor,
+                              size: 14,
+                            ),
+                          ),
+                        if (task['attachments'] != null &&
+                            (task['attachments'] as List).isNotEmpty)
+                          Icon(
+                            Icons.attach_file,
+                            color: isTimeOverdue && !isCompleted
+                                ? Colors.redAccent
+                                : dateTimeColor,
+                            size: 14,
+                          ),
+                      ],
+                    ),
                   ],
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+          if (completionStatus.isNotEmpty)
+            Positioned(
+              top: 20,
+              right: 15,
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                decoration: BoxDecoration(
+                  color: completionStatus == 'Early'
+                      ? Colors.green.withOpacity(0.5)
+                      : Colors.red.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  completionStatus,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

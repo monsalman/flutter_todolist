@@ -442,141 +442,186 @@ class _KalenderPageState extends State<KalenderPage>
         : (isTimeOverdue ? Colors.redAccent : Colors.white70);
     final Color checkboxColor = isCompleted ? Colors.white38 : WarnaSecondary;
 
+    // Get early/late status for completed tasks
+    String completionStatus = '';
+    if (isCompleted &&
+        task['due_date'] != null &&
+        task['date_completed'] != null) {
+      final dueDate = DateTime.parse(task['due_date']).toLocal();
+      final completedDate = DateTime.parse(task['date_completed']).toLocal();
+
+      final dueDay = DateTime(dueDate.year, dueDate.month, dueDate.day);
+      final completedDay =
+          DateTime(completedDate.year, completedDate.month, completedDate.day);
+
+      if (completedDay.isBefore(dueDay)) {
+        completionStatus = 'early';
+      } else if (completedDay.isAfter(dueDay)) {
+        completionStatus = 'late';
+      }
+    }
+
     return Card(
       margin: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(15),
       ),
       color: WarnaUtama2,
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => TaskDetail(
-                task: task,
-                onTaskUpdated: () {
-                  _loadCategories();
-                  _loadEvents();
-                },
+      child: Stack(
+        children: [
+          InkWell(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TaskDetail(
+                    task: task,
+                    onTaskUpdated: () {
+                      _loadCategories();
+                      _loadEvents();
+                    },
+                  ),
+                ),
+              );
+            },
+            child: ListTile(
+              contentPadding: EdgeInsets.only(left: 4, right: 10),
+              horizontalTitleGap: 0,
+              leading: Transform.scale(
+                scale: 1.2,
+                child: Tooltip(
+                  message: hasUncompletedSubtasks && !isCompleted
+                      ? 'Complete all subtasks first'
+                      : isCompleted
+                          ? 'Mark as uncompleted'
+                          : 'Mark as completed',
+                  child: MouseRegion(
+                    cursor: hasUncompletedSubtasks && !isCompleted
+                        ? SystemMouseCursors.forbidden
+                        : SystemMouseCursors.click,
+                    child: Checkbox(
+                      value: isCompleted,
+                      onChanged: (bool? value) {
+                        if (value != null) {
+                          _updateTaskStatus(task['id'], value);
+                        }
+                      },
+                      activeColor: checkboxColor,
+                      checkColor: WarnaUtama,
+                      side: BorderSide(color: checkboxColor, width: 2),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        task['title'] ?? '',
+                        style: TextStyle(
+                          color: textColor,
+                          fontSize: 16,
+                          decoration:
+                              isCompleted ? TextDecoration.lineThrough : null,
+                          decorationColor: checkboxColor,
+                          decorationThickness: 1.5,
+                        ),
+                      ),
+                      SizedBox(width: 4),
+                      if (task['priority'] != null)
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: _getPriorityColor(task['priority']),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                    ],
+                  ),
+                  SizedBox(height: 4),
+                  Row(
+                    children: [
+                      if (task['time'] != null)
+                        Text(
+                          '${task['time']}'.substring(0, 5),
+                          style: TextStyle(
+                            color: dateTimeColor,
+                            fontSize: 12,
+                          ),
+                        ),
+                      if (task['time'] != null) SizedBox(width: 8),
+                      if (isTimeOverdue && !isCompleted)
+                        Text(
+                          _getOverdueText(task),
+                          style: TextStyle(
+                            color: Colors.redAccent,
+                            fontSize: 12,
+                          ),
+                        ),
+                      if (isTimeOverdue && !isCompleted) SizedBox(width: 8),
+                      if (task['subtasks'] != null &&
+                          (task['subtasks'] as List).isNotEmpty)
+                        Padding(
+                          padding: EdgeInsets.only(right: 4),
+                          child: Icon(Icons.checklist,
+                              color: isTimeOverdue && !isCompleted
+                                  ? Colors.redAccent
+                                  : Colors.white70,
+                              size: 14),
+                        ),
+                      if (task['notes'] != null &&
+                          task['notes'].toString().isNotEmpty)
+                        Padding(
+                          padding: EdgeInsets.only(right: 4),
+                          child: Icon(Icons.sticky_note_2,
+                              color: isTimeOverdue && !isCompleted
+                                  ? Colors.redAccent
+                                  : Colors.white70,
+                              size: 14),
+                        ),
+                      if (task['attachments'] != null &&
+                          (task['attachments'] as List).isNotEmpty)
+                        Icon(Icons.attach_file,
+                            color: isTimeOverdue && !isCompleted
+                                ? Colors.redAccent
+                                : Colors.white70,
+                            size: 14),
+                    ],
+                  ),
+                ],
               ),
             ),
-          );
-        },
-        child: ListTile(
-          contentPadding: EdgeInsets.only(left: 4, right: 10),
-          horizontalTitleGap: 0,
-          leading: Transform.scale(
-            scale: 1.2,
-            child: Tooltip(
-              message: hasUncompletedSubtasks && !isCompleted
-                  ? 'Complete all subtasks first'
-                  : isCompleted
-                      ? 'Mark as uncompleted'
-                      : 'Mark as completed',
-              child: MouseRegion(
-                cursor: hasUncompletedSubtasks && !isCompleted
-                    ? SystemMouseCursors.forbidden
-                    : SystemMouseCursors.click,
-                child: Checkbox(
-                  value: isCompleted,
-                  onChanged: (bool? value) {
-                    if (value != null) {
-                      _updateTaskStatus(task['id'], value);
-                    }
-                  },
-                  activeColor: checkboxColor,
-                  checkColor: WarnaUtama,
-                  side: BorderSide(color: checkboxColor, width: 2),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4),
+          ),
+          if (completionStatus.isNotEmpty)
+            Positioned(
+              top: 10,
+              right: 10,
+              child: Container(
+                padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: completionStatus == 'early'
+                      ? Colors.green.withOpacity(0.7)
+                      : Colors.red.withOpacity(0.7),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  completionStatus,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
             ),
-          ),
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  Text(
-                    task['title'] ?? '',
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 16,
-                      decoration:
-                          isCompleted ? TextDecoration.lineThrough : null,
-                      decorationColor: checkboxColor,
-                      decorationThickness: 1.5,
-                    ),
-                  ),
-                  SizedBox(width: 4),
-                  if (task['priority'] != null)
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: _getPriorityColor(task['priority']),
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                ],
-              ),
-              SizedBox(height: 4),
-              Row(
-                children: [
-                  if (task['time'] != null)
-                    Text(
-                      '${task['time']}'.substring(0, 5),
-                      style: TextStyle(
-                        color: dateTimeColor,
-                        fontSize: 12,
-                      ),
-                    ),
-                  if (task['time'] != null) SizedBox(width: 8),
-                  if (isTimeOverdue && !isCompleted)
-                    Text(
-                      _getOverdueText(task),
-                      style: TextStyle(
-                        color: Colors.redAccent,
-                        fontSize: 12,
-                      ),
-                    ),
-                  if (isTimeOverdue && !isCompleted) SizedBox(width: 8),
-                  if (task['subtasks'] != null &&
-                      (task['subtasks'] as List).isNotEmpty)
-                    Padding(
-                      padding: EdgeInsets.only(right: 4),
-                      child: Icon(Icons.checklist,
-                          color: isTimeOverdue && !isCompleted
-                              ? Colors.redAccent
-                              : Colors.white70,
-                          size: 14),
-                    ),
-                  if (task['notes'] != null &&
-                      task['notes'].toString().isNotEmpty)
-                    Padding(
-                      padding: EdgeInsets.only(right: 4),
-                      child: Icon(Icons.sticky_note_2,
-                          color: isTimeOverdue && !isCompleted
-                              ? Colors.redAccent
-                              : Colors.white70,
-                          size: 14),
-                    ),
-                  if (task['attachments'] != null &&
-                      (task['attachments'] as List).isNotEmpty)
-                    Icon(Icons.attach_file,
-                        color: isTimeOverdue && !isCompleted
-                            ? Colors.redAccent
-                            : Colors.white70,
-                        size: 14),
-                ],
-              ),
-            ],
-          ),
-        ),
+        ],
       ),
     );
   }
@@ -685,8 +730,10 @@ class _KalenderPageState extends State<KalenderPage>
       };
 
       if (isCompleted) {
+        // Set the completion date to now - used for early/late indicators
         updateData['date_completed'] = DateTime.now().toIso8601String();
       } else {
+        // Clear the completion date when marking as incomplete
         updateData['date_completed'] = '';
       }
 
