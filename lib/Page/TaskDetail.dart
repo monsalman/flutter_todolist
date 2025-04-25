@@ -599,12 +599,13 @@ class _TaskDetailState extends State<TaskDetail> {
     final today = DateTime(now.year, now.month, now.day);
     final currentDate = DateTime(currentMonth.year, currentMonth.month, day);
     final isToday = today.isAtSameMomentAs(currentDate) && isCurrentMonth;
+    final isPastDate = currentDate.isBefore(today);
 
     return Expanded(
       child: AspectRatio(
         aspectRatio: 1,
         child: GestureDetector(
-          onTap: isCurrentMonth ? onTap : null,
+          onTap: (isCurrentMonth && (!isPastDate || isSelected)) ? onTap : null,
           child: Container(
             margin: EdgeInsets.all(4),
             decoration: BoxDecoration(
@@ -619,9 +620,11 @@ class _TaskDetailState extends State<TaskDetail> {
                 day.toString(),
                 style: TextStyle(
                   color: isCurrentMonth
-                      ? isSelected
-                          ? Colors.black
-                          : Colors.white
+                      ? (isPastDate && !isSelected)
+                          ? Colors.white.withOpacity(0.3)
+                          : isSelected
+                              ? Colors.black
+                              : Colors.white
                       : Colors.white.withOpacity(0.3),
                   fontSize: 16,
                   fontWeight: isSelected || isToday
@@ -638,30 +641,29 @@ class _TaskDetailState extends State<TaskDetail> {
 
   Future<void> _selectTime(BuildContext context) async {
     String? currentTimeString = widget.task['time'];
-    TimeOfDay? selectedTime;
+    TimeOfDay? initialTime;
 
     if (currentTimeString != null) {
       try {
         if (currentTimeString.contains('T') ||
             currentTimeString.contains(' ')) {
           final dateTime = DateTime.parse(currentTimeString);
-          selectedTime =
-              TimeOfDay(hour: dateTime.hour, minute: dateTime.minute);
+          initialTime = TimeOfDay(hour: dateTime.hour, minute: dateTime.minute);
         } else {
           final parts = currentTimeString.split(':');
-          selectedTime = TimeOfDay(
+          initialTime = TimeOfDay(
               hour: int.parse(parts[0]),
               minute: parts.length > 1 ? int.parse(parts[1]) : 0);
         }
       } catch (e) {
-        selectedTime = TimeOfDay.now();
+        initialTime = TimeOfDay.now();
       }
     } else {
-      selectedTime = TimeOfDay.now();
+      initialTime = TimeOfDay.now();
     }
 
-    int selectedHour = selectedTime.hour;
-    int selectedMinute = selectedTime.minute;
+    int selectedHour = initialTime.hour;
+    int selectedMinute = initialTime.minute;
 
     final result = await showDialog<dynamic>(
       context: context,
@@ -774,10 +776,11 @@ class _TaskDetailState extends State<TaskDetail> {
                                       horizontal: 16, vertical: 8),
                                 ),
                                 onPressed: () => Navigator.pop(
-                                    context,
-                                    TimeOfDay(
-                                        hour: selectedHour,
-                                        minute: selectedMinute)),
+                                  context,
+                                  TimeOfDay(
+                                      hour: selectedHour,
+                                      minute: selectedMinute),
+                                ),
                                 child: Text(
                                   'OK',
                                   style: TextStyle(

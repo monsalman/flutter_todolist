@@ -614,7 +614,7 @@ class _AddTasksState extends State<AddTasks> {
         DateTime(currentMonth.year, currentMonth.month + 1, 0).day;
     final daysInPrevMonth =
         DateTime(currentMonth.year, currentMonth.month, 0).day;
-    const numRows = 6;
+    const numRows = 5;
 
     List<Widget> rows = [];
     int day = 1 - firstWeekday;
@@ -685,12 +685,13 @@ class _AddTasksState extends State<AddTasks> {
     final today = DateTime(now.year, now.month, now.day);
     final currentDate = DateTime(currentMonth.year, currentMonth.month, day);
     final isToday = today.isAtSameMomentAs(currentDate) && isCurrentMonth;
+    final isPastDate = currentDate.isBefore(today);
 
     return Expanded(
       child: AspectRatio(
         aspectRatio: 1,
         child: GestureDetector(
-          onTap: isCurrentMonth ? onTap : null,
+          onTap: (isCurrentMonth && (!isPastDate || isSelected)) ? onTap : null,
           child: Container(
             margin: EdgeInsets.all(4),
             decoration: BoxDecoration(
@@ -705,9 +706,11 @@ class _AddTasksState extends State<AddTasks> {
                 day.toString(),
                 style: TextStyle(
                   color: isCurrentMonth
-                      ? isSelected
-                          ? Colors.black
-                          : Colors.white
+                      ? (isPastDate && !isSelected)
+                          ? Colors.white.withOpacity(0.3)
+                          : isSelected
+                              ? Colors.black
+                              : Colors.white
                       : Colors.white.withOpacity(0.3),
                   fontSize: 16,
                   fontWeight: isSelected || isToday
